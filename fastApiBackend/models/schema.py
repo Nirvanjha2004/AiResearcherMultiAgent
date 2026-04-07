@@ -1,7 +1,7 @@
-from typing import TypedDict, List
+from typing import TypedDict, Annotated
 
 class myState(TypedDict):
-    user_query : string
-    subqueries : List[string]
-    raw_data : List[string]
-    final_output : string
+    user_query : str
+    subqueries : list[str]
+    raw_data : Annotated[list[str] , operator.add]
+    final_output : str

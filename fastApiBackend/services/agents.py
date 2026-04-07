@@ -20,7 +20,7 @@ def subQueryAgent(string query):
     chain = prompt | llm
     response = chain.invoke({'query' : query}).content
     subqueries = json.loads(response)
-    myState['subqueries'] = subqueries
+    return {'subqueries' : subqueries }
 
 def fetchRawDataAgent():
     sub_query = myState.get("subqueries", []);
@@ -30,4 +30,6 @@ def fetchRawDataAgent():
         response = search_tool.invoke(query)
         raw_data.append(response)
 
-    myState['raw_data'] = raw_data
+    return {'raw_data' : raw_data } 
+
+
