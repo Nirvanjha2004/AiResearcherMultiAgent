@@ -1,0 +1,17 @@
+# Web Framework
+fastapi>=0.100.0
+uvicorn>=0.23.0
+
+# AI & Orchestration
+langgraph>=0.0.26
+langchain-core>=0.1.52
+langchain-groq>=0.0.1
+langchain-community>=0.0.38
+
+# Tools
+duckduckgo-search>=5.0.0
+
+# Environment Management
+python-dotenv>=1.0.0
+langchain
+langchain-groq
