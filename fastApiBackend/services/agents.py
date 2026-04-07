@@ -1,9 +1,15 @@
-from llm import llm
-from schema import myState
-from langchain_core.prompts import ChatPromptTemplate
-import json 
-from langchain_community.tools import DuckDuckGoSearchResults
 
+import json
+import operator
+from typing import TypedDict, Annotated, List
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_community.tools import DuckDuckGoSearchResults
+from llm import llm # Ensure this points to your configured Groq/LLM instance
+from schema import AgentState
+
+# ==========================================
+# 2. PROMPTS
+# ==========================================
 subquery_prompt = ChatPromptTemplate.from_messages([
     ("system", 
      "You are an expert at breaking down complex user queries into smaller independent sub-queries. "
@@ -14,7 +20,6 @@ subquery_prompt = ChatPromptTemplate.from_messages([
      "Break the following query into sub-queries:\n\n{query}"
     )
 ])
-
 
 writer_prompt = ChatPromptTemplate.from_messages([
     ("system", 
@@ -55,45 +60,86 @@ reviewer_prompt = ChatPromptTemplate.from_messages([
     )
 ])
 
+# ==========================================
+# 3. TOOLS
+# ==========================================
 search_tool = DuckDuckGoSearchResults()
-def subQueryAgent():
-    query = myState["user_query"]
+
+# ==========================================
+# 4. AGENT NODES
+# ==========================================
+
+def subQueryAgent(state: AgentState):
+    print("--- PLANNER AGENT RUNNING ---")
+    query = state.get("user_query", "")
+    
     chain = subquery_prompt | llm
-    response = chain.invoke({'query' : query}).content
-    subqueries = json.loads(response)
-    return {'subqueries' : subqueries }
+    response = chain.invoke({'query': query}).content
+    
+    try:
+        # Clean potential markdown wrapping from LLM output
+        clean_json = response.strip().replace("```json", "").replace("```", "")
+        subqueries = json.loads(clean_json)
+    except json.JSONDecodeError:
+        print("Warning: Failed to parse Planner JSON. Falling back to original query.")
+        subqueries = [query]
+        
+    return {'subqueries': subqueries}
 
-def fetchRawDataAgent():
-    sub_query = myState.get("subqueries", []);
-    raw_data = myState.get("raw_data", []);
+def fetchRawDataAgent(state: AgentState):
+    print("--- RESEARCHER AGENT RUNNING ---")
+    sub_queries = state.get("subqueries", [])
+    new_raw_data = []
 
-    for query in sub_query:
+    for query in sub_queries:
+        print(f"Searching for: {query}")
         response = search_tool.invoke(query)
-        raw_data.append(response)
+        new_raw_data.append(f"Results for '{query}':\n{response}")
 
-    return {'raw_data' : raw_data } 
+    # LangGraph's operator.add will automatically append this to the existing list in state
+    return {'raw_data': new_raw_data} 
 
-
-def writerAgent():
-    raw_research_data = myState["raw_data"]
-    original_query = myState["user_query"]
+def writerAgent(state: AgentState):
+    print("--- WRITER AGENT RUNNING ---")
+    # Convert the list of raw data strings into one giant text block for the LLM
+    raw_research_data = "\n\n".join(state.get("raw_data", []))
+    original_query = state.get("user_query", "")
+    
     chain = writer_prompt | llm
     response = chain.invoke({
-        "original_query" : original_query,
-        "raw_research_data" : raw_research_data
+        "original_query": original_query,
+        "raw_research_data": raw_research_data
     }).content
 
-    return {
-        "final_output" : response
-    }
+    return {"final_output": response}
 
-def review_agent():
-    final_output = myState["final_output"]
+def review_agent(state: AgentState):
+    print("--- REVIEWER AGENT RUNNING ---")
+    final_output = state.get("final_output", "")
+    original_query = state.get("user_query", "") # Fixed missing variable here
+    
     chain = reviewer_prompt | llm
     response = chain.invoke({
-        "original_query" : original_query,
-        "final_report" : final_output
+        "original_query": original_query,
+        "final_report": final_output
     }).content
 
-    return {"reviewer_response" : response}
+    try:
+        clean_json = response.strip().replace("```json", "").replace("```", "")
+        review_result = json.loads(clean_json)
+        decision = review_result.get("decision", "FAIL")
+        feedback = review_result.get("feedback", "No feedback provided.")
+    except json.JSONDecodeError:
+        decision = "FAIL"
+        feedback = "System failed to parse reviewer JSON output."
 
+    current_revisions = state.get("revision_count", 0)
+    
+    print(f"Review Decision: {decision}")
+    print(f"Feedback: {feedback}")
+
+    return {
+        "review_decision": decision,
+        "review_feedback": feedback,
+        "revision_count": current_revisions + 1
+    }
