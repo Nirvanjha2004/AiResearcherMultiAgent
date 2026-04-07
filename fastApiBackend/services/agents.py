@@ -17,3 +17,6 @@ def subQueryAgent(string query):
     response = chain.invoke({'query' : query}).content
     subqueries = json.loads(response)
     myState['subqueries'] = subqueries
+
+def fetchRawDataAgent():
+    
