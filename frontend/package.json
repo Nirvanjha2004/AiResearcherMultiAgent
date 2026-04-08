@@ -12,9 +12,20 @@
   },
   "dependencies": {
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "framer-motion": "^11.0.0",
+    "lucide-react": "^0.400.0",
+    "react-router-dom": "^6.26.0",
+    "react-markdown": "^9.0.0",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.1.0",
+    "tailwind-merge": "^2.3.0",
+    "@radix-ui/react-slot": "^1.1.0"
   },
   "devDependencies": {
+    "tailwindcss": "^3.4.1",
+    "postcss": "^8.4.38",
+    "autoprefixer": "^10.4.19",
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.1",
@@ -25,6 +36,8 @@
     "jsdom": "^25.0.1",
     "typescript": "^5.5.3",
     "vite": "^5.4.8",
-    "vitest": "^2.1.1"
+    "vitest": "^2.1.1",
+    "fast-check": "^3.21.0",
+    "@types/react-router-dom": "^5.3.3"
   }
 }
