@@ -1,3 +1,18 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+	html {
+		color-scheme: light;
+	}
+
+	html.dark {
+		color-scheme: dark;
+	}
+
+	body {
+		font-family: 'Segoe UI', 'Helvetica Neue', Helvetica, sans-serif;
+		@apply bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-50;
+	}
+}

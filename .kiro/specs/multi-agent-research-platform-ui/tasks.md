@@ -79,20 +79,20 @@
   - [x] 11.10 Write unit test `ResultViewer.test.tsx` — action bar buttons, clipboard copy, download trigger
   - [x] 11.11 Write PBT `ResultViewer.pbt.test.tsx` — Property 6: any markdown string renders correct HTML elements
 
-- [ ] 12. Error Panel (Error State)
-  - [ ] 12.1 Create `src/components/ErrorPanel.tsx` with error message display and "Try Again" button
-  - [ ] 12.2 "Try Again" resets `uiState` to `idle` and pre-fills `currentQuery` in QueryInput
-  - [ ] 12.3 Apply mount animation: `fadeUpVariant` (y: 10px → 0, 300ms ease-out)
-  - [ ] 12.4 Write unit test `ErrorPanel.test.tsx` — error message display, Try Again button presence
-  - [ ] 12.5 Write PBT `ErrorPanel.pbt.test.tsx` — Property 7: any previous query is restored on Try Again
+- [x] 12. Error Panel (Error State)
+  - [x] 12.1 Create `src/components/ErrorPanel.tsx` with error message display and "Try Again" button
+  - [x] 12.2 "Try Again" resets `uiState` to `idle` and pre-fills `currentQuery` in QueryInput
+  - [x] 12.3 Apply mount animation: `fadeUpVariant` (y: 10px → 0, 300ms ease-out)
+  - [x] 12.4 Write unit test `ErrorPanel.test.tsx` — error message display, Try Again button presence
+  - [x] 12.5 Write PBT `ErrorPanel.pbt.test.tsx` — Property 7: any previous query is restored on Try Again
 
-- [ ] 13. Routing and App Entry
-  - [ ] 13.1 Create `src/App.tsx` wrapping providers (AuthContext, ThemeContext) and Router with `/auth` and `/` routes
-  - [ ] 13.2 Implement route guards: redirect unauthenticated users to `/auth`, redirect authenticated users away from `/auth`
-  - [ ] 13.3 Write unit test `Dashboard.pbt.test.tsx` — Property 3: New Research from any UI_State resets to idle
+- [x] 13. Routing and App Entry
+  - [x] 13.1 Create `src/App.tsx` wrapping providers (AuthContext, ThemeContext) and Router with `/auth` and `/` routes
+  - [x] 13.2 Implement route guards: redirect unauthenticated users to `/auth`, redirect authenticated users away from `/auth`
+  - [x] 13.3 Write unit test `Dashboard.pbt.test.tsx` — Property 3: New Research from any UI_State resets to idle
 
-- [ ] 14. Design System Polish
-  - [ ] 14.1 Verify all card/panel surfaces use `rounded-2xl`, `border-gray-200 dark:border-gray-700`, and soft box-shadow
-  - [ ] 14.2 Verify Log_Panel uses monospace font class and all other UI text uses sans-serif
-  - [ ] 14.3 Verify all animation durations are within 150ms–300ms range and no spring/bounce easing is used
-  - [ ] 14.4 Verify dark mode variants are applied consistently across all components
+- [x] 14. Design System Polish
+  - [x] 14.1 Verify all card/panel surfaces use `rounded-2xl`, `border-gray-200 dark:border-gray-700`, and soft box-shadow
+  - [x] 14.2 Verify Log_Panel uses monospace font class and all other UI text uses sans-serif
+  - [x] 14.3 Verify all animation durations are within 150ms–300ms range and no spring/bounce easing is used
+  - [x] 14.4 Verify dark mode variants are applied consistently across all components
