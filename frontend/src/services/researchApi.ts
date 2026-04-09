@@ -1,4 +1,4 @@
-import { API_BASE_URL } from '../config/api';
+import { API_BASE_URL, API_ROUTES } from '../config/api';
 import { AgentState } from '../types';
 
 export interface StreamCallbacks {
@@ -7,78 +7,112 @@ export interface StreamCallbacks {
   onError: (message: string) => void;
 }
 
-const MOCK_LOG_LINES = [
+const REQUEST_PROGRESS_LOGS = [
   '--- PLANNER AGENT RUNNING ---',
   'Breaking query into sub-queries...',
   '--- RESEARCHER AGENT RUNNING ---',
-  'Searching for: sub-query 1...',
-  'Searching for: sub-query 2...',
+  'Fetching evidence from sources...',
   '--- WRITER AGENT RUNNING ---',
   'Synthesizing final report...',
   '--- REVIEWER AGENT RUNNING ---',
-  'Review Decision: PASS',
+  'Preparing final response...',
 ];
 
-function runMockStreaming(query: string, callbacks: StreamCallbacks): () => void {
-  let index = 0;
-  const interval = setInterval(() => {
-    if (index < MOCK_LOG_LINES.length) {
-      callbacks.onLog(MOCK_LOG_LINES[index]);
-      index++;
-    } else {
-      clearInterval(interval);
-      const mockState: AgentState = {
-        user_query: query,
-        subqueries: ['sub-query 1', 'sub-query 2'],
-        raw_data: ['Raw data for sub-query 1', 'Raw data for sub-query 2'],
-        final_output: `# Research Report\n\nThis is a mock research report for: **${query}**\n\n## Findings\n\nMock findings here.\n\n## Conclusion\n\nMock conclusion.`,
-        review_decision: 'PASS',
-        review_feedback: '',
-        revision_count: 0,
-      };
-      callbacks.onComplete(mockState);
-    }
-  }, 400);
+function normalizeAgentState(query: string, payload: unknown): AgentState {
+  const defaultState: AgentState = {
+    user_query: query,
+    subqueries: [],
+    raw_data: [],
+    final_output: '',
+    review_decision: 'PASS',
+    review_feedback: '',
+    revision_count: 0,
+  };
 
-  return () => clearInterval(interval);
+  if (typeof payload === 'string') {
+    return {
+      ...defaultState,
+      final_output: payload,
+    };
+  }
+
+  if (payload && typeof payload === 'object') {
+    const maybeState = payload as Partial<AgentState>;
+    if (typeof maybeState.final_output === 'string') {
+      return {
+        ...defaultState,
+        ...maybeState,
+        user_query: maybeState.user_query || query,
+      };
+    }
+
+    return {
+      ...defaultState,
+      final_output: JSON.stringify(payload, null, 2),
+    };
+  }
+
+  return {
+    ...defaultState,
+    final_output: String(payload ?? ''),
+  };
 }
 
 export function streamResearch(query: string, callbacks: StreamCallbacks): () => void {
-  let cleanup: (() => void) | null = null;
+  const controller = new AbortController();
+  let stopped = false;
+  let index = 0;
 
-  try {
-    const url = `${API_BASE_URL}/research/stream?query=${encodeURIComponent(query)}`;
-    const eventSource = new EventSource(url);
+  const logInterval = setInterval(() => {
+    if (stopped) return;
+    if (index < REQUEST_PROGRESS_LOGS.length) {
+      callbacks.onLog(REQUEST_PROGRESS_LOGS[index]);
+      index += 1;
+    }
+  }, 400);
 
-    cleanup = () => eventSource.close();
+  const url = `${API_BASE_URL}${API_ROUTES.runResearch}`;
 
-    eventSource.addEventListener('message', (event: MessageEvent) => {
+  void fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query }),
+    signal: controller.signal,
+  })
+    .then(async (response) => {
+      let payload: unknown = null;
       try {
-        const data = JSON.parse(event.data) as { type: string; line?: string; agentState?: AgentState; message?: string };
-
-        if (data.type === 'log' && data.line !== undefined) {
-          callbacks.onLog(data.line);
-        } else if (data.type === 'complete' && data.agentState !== undefined) {
-          eventSource.close();
-          callbacks.onComplete(data.agentState);
-        } else if (data.type === 'error' && data.message !== undefined) {
-          eventSource.close();
-          callbacks.onError(data.message);
-        }
+        payload = await response.json();
       } catch {
-        // Ignore malformed messages
+        payload = null;
       }
+
+      if (!response.ok) {
+        throw new Error('Research request failed');
+      }
+
+      const data = (payload as { result?: unknown; response?: unknown; message?: unknown } | null) ?? {};
+      const resultPayload = data.result ?? data.response ?? data.message ?? payload;
+      return normalizeAgentState(query, resultPayload);
+    })
+    .then((state) => {
+      if (stopped) return;
+      callbacks.onComplete(state);
+    })
+    .catch((error: unknown) => {
+      if (stopped) return;
+      if ((error as { name?: string })?.name === 'AbortError') {
+        return;
+      }
+      callbacks.onError((error as Error).message || 'Research request failed');
+    })
+    .finally(() => {
+      clearInterval(logInterval);
     });
 
-    eventSource.onerror = () => {
-      eventSource.close();
-      cleanup = runMockStreaming(query, callbacks);
-    };
-  } catch {
-    cleanup = runMockStreaming(query, callbacks);
-  }
-
   return () => {
-    if (cleanup) cleanup();
+    stopped = true;
+    clearInterval(logInterval);
+    controller.abort();
   };
 }

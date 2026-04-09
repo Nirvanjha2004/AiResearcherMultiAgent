@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { fadeUpVariant, fadeVariant } from '../lib/animations';
+import { loginWithBackend, signupWithBackend } from '../services/authApi';
 
 type Tab = 'login' | 'signup';
 
@@ -45,14 +46,15 @@ function LoginForm({ onError }: LoginFormProps) {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
     try {
-      login({ email }, 'mock-token');
+      const { token } = await loginWithBackend(email, password);
+      login({ email }, token);
       navigate('/');
-    } catch {
-      onError('Login failed. Please try again.');
+    } catch (error) {
+      onError(error instanceof Error ? error.message : 'Login failed. Please try again.');
     }
   };
 
@@ -123,14 +125,21 @@ function SignUpForm({ onError }: SignUpFormProps) {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
+
+    if (password !== confirmPassword) {
+      setErrors(prev => ({ ...prev, confirmPassword: 'Passwords do not match' }));
+      return;
+    }
+
     try {
-      login({ email }, 'mock-token');
+      const { token } = await signupWithBackend(email, password);
+      login({ email }, token);
       navigate('/');
-    } catch {
-      onError('Sign up failed. Please try again.');
+    } catch (error) {
+      onError(error instanceof Error ? error.message : 'Sign up failed. Please try again.');
     }
   };
 
