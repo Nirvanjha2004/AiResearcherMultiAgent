@@ -2,9 +2,31 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer utilities {
+	.saas-scrollbar::-webkit-scrollbar {
+		width: 10px;
+		height: 10px;
+	}
+
+	.saas-scrollbar::-webkit-scrollbar-track {
+		background: rgba(24, 24, 27, 0.55);
+	}
+
+	.saas-scrollbar::-webkit-scrollbar-thumb {
+		border-radius: 9999px;
+		border: 2px solid rgba(24, 24, 27, 0.55);
+		background: linear-gradient(180deg, rgba(99, 102, 241, 0.65), rgba(34, 211, 238, 0.55));
+	}
+
+	.saas-scrollbar {
+		scrollbar-color: rgba(99, 102, 241, 0.65) rgba(24, 24, 27, 0.55);
+		scrollbar-width: thin;
+	}
+}
+
 @layer base {
 	html {
-		color-scheme: light;
+		color-scheme: dark;
 	}
 
 	html.dark {
@@ -12,7 +34,7 @@
 	}
 
 	body {
-		font-family: 'Segoe UI', 'Helvetica Neue', Helvetica, sans-serif;
-		@apply bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-50;
+		font-family: Inter, 'Segoe UI', 'Helvetica Neue', Helvetica, sans-serif;
+		@apply bg-zinc-950 text-zinc-100 antialiased;
 	}
 }
