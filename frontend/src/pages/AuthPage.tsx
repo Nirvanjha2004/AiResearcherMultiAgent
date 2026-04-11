@@ -50,8 +50,8 @@ function LoginForm({ onError }: LoginFormProps) {
     e.preventDefault();
     if (!validate()) return;
     try {
-      const { token } = await loginWithBackend(email, password);
-      login({ email }, token);
+      const { token, user } = await loginWithBackend(email, password);
+      login({ email: user.email, name: user.display_name }, token);
       navigate('/');
     } catch (error) {
       onError(error instanceof Error ? error.message : 'Login failed. Please try again.');
@@ -105,6 +105,7 @@ interface SignUpFormProps {
 function SignUpForm({ onError }: SignUpFormProps) {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -129,8 +130,8 @@ function SignUpForm({ onError }: SignUpFormProps) {
     }
 
     try {
-      const { token } = await signupWithBackend(email, password);
-      login({ email }, token);
+      const { token, user } = await signupWithBackend(email, password, displayName);
+      login({ email: user.email, name: user.display_name }, token);
       navigate('/');
     } catch (error) {
       onError(error instanceof Error ? error.message : 'Sign up failed. Please try again.');
@@ -139,6 +140,19 @@ function SignUpForm({ onError }: SignUpFormProps) {
 
   return (
     <form onSubmit={handleSubmit} noValidate className="space-y-4">
+      <div>
+        <label htmlFor="signup-display-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Display Name
+        </label>
+        <input
+          id="signup-display-name"
+          type="text"
+          value={displayName}
+          onChange={e => setDisplayName(e.target.value)}
+          placeholder="Your name"
+          className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+      </div>
       <div>
         <label htmlFor="signup-email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
           Email

@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { fetchCurrentUserProfile, logoutFromBackend } from '../services/authApi';
 
 interface User {
   email: string;
@@ -23,6 +24,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return localStorage.getItem('auth_token');
   });
 
+  useEffect(() => {
+    if (!token) {
+      return;
+    }
+
+    let mounted = true;
+
+    void (async () => {
+      try {
+        const profile = await fetchCurrentUserProfile();
+        if (!mounted) return;
+
+        const syncedUser: User = {
+          email: profile.email,
+          name: profile.display_name,
+        };
+
+        setUser(syncedUser);
+        localStorage.setItem('auth_user', JSON.stringify(syncedUser));
+      } catch {
+        if (!mounted) return;
+
+        setUser(null);
+        setToken(null);
+        localStorage.removeItem('auth_user');
+        localStorage.removeItem('auth_token');
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [token]);
+
   const login = (newUser: User, newToken: string) => {
     setUser(newUser);
     setToken(newToken);
@@ -31,6 +66,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
+    void logoutFromBackend().catch(() => {
+      // Local cleanup still proceeds when backend session revocation fails.
+    });
     setUser(null);
     setToken(null);
     localStorage.removeItem('auth_user');

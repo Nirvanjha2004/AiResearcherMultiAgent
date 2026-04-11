@@ -41,6 +41,9 @@ This document lists UI features that exist in the frontend but are not currently
 - Frontend now records copy/download lifecycle events from action controls and chat message copy actions, while preserving existing browser-side copy/download UX.
 
 ## 7) User profile model beyond username/password
-- Frontend capability: UI works with `email` and profile display patterns.
-- Backend reality: auth schema accepts only `username` and `password`, and persists to a flat file.
-- Current frontend behavior: frontend maps `email` input to backend `username` field.
+- Status: implemented.
+- Backend now persists structured user profiles (`username`, `email`, `display_name`, `created_at`) and returns them in auth/session responses.
+- Backend now provides authenticated profile endpoints:
+	- `GET /users/profile` to retrieve current user profile.
+	- `PATCH /users/profile` to update profile fields.
+- Frontend signup/login now consumes backend profile payloads and stores real profile fields in auth state.

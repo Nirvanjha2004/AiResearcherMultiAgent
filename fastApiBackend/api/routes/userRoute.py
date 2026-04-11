@@ -23,10 +23,19 @@ class ResearchRequest(BaseModel):
 class SignupRequest(BaseModel):
     username: str
     password: str
+    email: Optional[str] = None
+    display_name: Optional[str] = None
 
 
 class SignupResponse(BaseModel):
     message: str
+
+
+class UserProfile(BaseModel):
+    username: str
+    email: str
+    display_name: str
+    created_at: str
 
 
 class AuthResponse(BaseModel):
@@ -34,11 +43,17 @@ class AuthResponse(BaseModel):
     token: str
     token_type: str = "bearer"
     expires_in: int
+    user: UserProfile
 
 
 class SessionResponse(BaseModel):
     authenticated: bool
     username: str
+    user: UserProfile
+
+
+class ProfileUpdateRequest(BaseModel):
+    display_name: Optional[str] = None
 
 
 class ExportEventRequest(BaseModel):
@@ -104,6 +119,7 @@ STEP_LOGS = {
 }
 
 USERS_FILE = "users.txt"
+USER_PROFILES_FILE = "user_profiles.json"
 RESEARCH_SESSIONS_FILE = "research_sessions.json"
 EXPORT_EVENTS_FILE = "export_events.json"
 AUTH_SECRET = os.getenv("AUTH_SECRET", "dev-secret-change-me")
@@ -178,6 +194,26 @@ def _read_users() -> Dict[str, str]:
 def _save_user(username: str, password: str) -> None:
     with open(USERS_FILE, "a") as f:
         f.write(f"{username}:{password}\n")
+
+
+def _read_user_profiles_store() -> Dict[str, Dict[str, Any]]:
+    if not os.path.exists(USER_PROFILES_FILE):
+        return {}
+
+    try:
+        with open(USER_PROFILES_FILE, "r") as f:
+            data = json.load(f)
+            if isinstance(data, dict):
+                return data
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+    return {}
+
+
+def _write_user_profiles_store(store: Dict[str, Dict[str, Any]]) -> None:
+    with open(USER_PROFILES_FILE, "w") as f:
+        json.dump(store, f)
 
 
 def _read_sessions_store() -> Dict[str, List[Dict[str, Any]]]:
@@ -255,6 +291,45 @@ def _authenticate(authorization: Optional[str], token_query: Optional[str] = Non
         raise HTTPException(status_code=401, detail="Invalid session")
 
     return username
+
+
+def _normalize_user_profile(username: str, payload: Any) -> Dict[str, Any]:
+    source = payload if isinstance(payload, dict) else {}
+
+    created_at = source.get("created_at") if isinstance(source.get("created_at"), str) else time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    email = source.get("email") if isinstance(source.get("email"), str) and source.get("email") else username
+
+    profile = UserProfile(
+        username=username,
+        email=email,
+        display_name=source.get("display_name") if isinstance(source.get("display_name"), str) and source.get("display_name") else username,
+        created_at=created_at,
+    )
+    return profile.model_dump()
+
+
+def _get_user_profile(username: str) -> Dict[str, Any]:
+    profiles = _read_user_profiles_store()
+    existing = profiles.get(username)
+    if existing:
+        normalized = _normalize_user_profile(username, existing)
+        profiles[username] = normalized
+        _write_user_profiles_store(profiles)
+        return normalized
+
+    # Backfill legacy users that existed before profile support.
+    normalized = _normalize_user_profile(username, {"email": username, "display_name": username})
+    profiles[username] = normalized
+    _write_user_profiles_store(profiles)
+    return normalized
+
+
+def _upsert_user_profile(username: str, profile_data: Dict[str, Any]) -> Dict[str, Any]:
+    profiles = _read_user_profiles_store()
+    normalized = _normalize_user_profile(username, profile_data)
+    profiles[username] = normalized
+    _write_user_profiles_store(profiles)
+    return normalized
 
 
 def _normalize_persisted_session(payload: Any) -> Dict[str, Any]:
@@ -389,7 +464,7 @@ def run_research_agent_stream(
 
 @router.post("/signup", response_model=AuthResponse)
 def signup(request: SignupRequest):
-    username = request.username
+    username = (request.email or request.username).strip().lower()
     password = request.password
 
     users = _read_users()
@@ -397,6 +472,14 @@ def signup(request: SignupRequest):
         raise HTTPException(status_code=400, detail="User already exists")
 
     _save_user(username, password)
+
+    profile = _upsert_user_profile(
+        username,
+        {
+            "email": request.email or username,
+            "display_name": request.display_name or username,
+        },
+    )
 
     token_data = _create_token(username)
     _register_session(token_data["token"], username, token_data["exp"])
@@ -406,12 +489,13 @@ def signup(request: SignupRequest):
         "token": token_data["token"],
         "token_type": "bearer",
         "expires_in": TOKEN_TTL_SECONDS,
+        "user": profile,
     }
 
 
 @router.post("/login", response_model=AuthResponse)
 def login(request: SignupRequest):
-    username = request.username
+    username = (request.email or request.username).strip().lower()
     password = request.password
 
     users = _read_users()
@@ -420,12 +504,14 @@ def login(request: SignupRequest):
 
     token_data = _create_token(username)
     _register_session(token_data["token"], username, token_data["exp"])
+    profile = _get_user_profile(username)
 
     return {
         "message": f"User {username} logged in successfully!",
         "token": token_data["token"],
         "token_type": "bearer",
         "expires_in": TOKEN_TTL_SECONDS,
+        "user": profile,
     }
 
 
@@ -438,7 +524,30 @@ def validate_session(
     return {
         "authenticated": True,
         "username": username,
+        "user": _get_user_profile(username),
     }
+
+
+@router.get("/profile", response_model=UserProfile)
+def get_profile(
+    authorization: Optional[str] = Header(default=None),
+):
+    username = _authenticate(authorization)
+    return _get_user_profile(username)
+
+
+@router.patch("/profile", response_model=UserProfile)
+def update_profile(
+    request: ProfileUpdateRequest,
+    authorization: Optional[str] = Header(default=None),
+):
+    username = _authenticate(authorization)
+    current = _get_user_profile(username)
+    updated = {
+        **current,
+        "display_name": request.display_name or current.get("display_name", username),
+    }
+    return _upsert_user_profile(username, updated)
 
 
 @router.post("/logout", response_model=SignupResponse)
