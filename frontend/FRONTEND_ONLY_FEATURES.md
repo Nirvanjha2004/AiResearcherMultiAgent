@@ -22,9 +22,9 @@ This document lists UI features that exist in the frontend but are not currently
 - Frontend stores and uses the real backend-issued token (no synthetic token fallback).
 
 ## 4) Google OAuth login button
-- Frontend capability: Google OAuth button is present in login and signup forms.
-- Backend reality: no OAuth endpoints or provider flow implemented.
-- Current frontend behavior: button is UI-only and does not call a backend OAuth flow.
+- Status: removed from frontend.
+- Google OAuth button and UI-only OAuth affordances are no longer rendered in login/signup forms.
+- Backend OAuth endpoints remain not implemented.
 
 ## 5) Server-side session/history persistence
 - Frontend capability: session list and active-session state exist in the dashboard.

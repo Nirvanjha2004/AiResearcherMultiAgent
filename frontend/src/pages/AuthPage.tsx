@@ -94,12 +94,6 @@ function LoginForm({ onError }: LoginFormProps) {
       >
         Sign In
       </button>
-      <button
-        type="button"
-        className="w-full py-2 px-4 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-150 flex items-center justify-center gap-2"
-      >
-        <span>G</span> Continue with Google
-      </button>
     </form>
   );
 }
@@ -194,12 +188,6 @@ function SignUpForm({ onError }: SignUpFormProps) {
         className="w-full py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors duration-150"
       >
         Create Account
-      </button>
-      <button
-        type="button"
-        className="w-full py-2 px-4 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-150 flex items-center justify-center gap-2"
-      >
-        <span>G</span> Continue with Google
       </button>
     </form>
   );

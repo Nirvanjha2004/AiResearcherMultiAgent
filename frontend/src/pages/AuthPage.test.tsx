@@ -85,17 +85,12 @@ describe('AuthPage', () => {
     expect(screen.getByLabelText(/confirm password/i)).toBeInTheDocument();
   });
 
-  // ── Google OAuth button ──────────────────────────────────────────────────────
-
-  it('shows Google OAuth button on Login form', () => {
+  it('does not render Google OAuth button on Login or Sign Up form', () => {
     render(<AuthPage />);
-    expect(screen.getByRole('button', { name: /continue with google/i })).toBeInTheDocument();
-  });
+    expect(screen.queryByRole('button', { name: /continue with google/i })).not.toBeInTheDocument();
 
-  it('shows Google OAuth button on Sign Up form', () => {
-    render(<AuthPage />);
     fireEvent.click(screen.getByRole('button', { name: /sign up/i }));
-    expect(screen.getByRole('button', { name: /continue with google/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /continue with google/i })).not.toBeInTheDocument();
   });
 
   // ── Inline validation errors ─────────────────────────────────────────────────
