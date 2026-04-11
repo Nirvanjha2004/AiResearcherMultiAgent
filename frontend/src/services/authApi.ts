@@ -1,4 +1,5 @@
-import { API_BASE_URL, API_ROUTES } from '../config/api';
+import { API_ROUTES } from '../config/api';
+import { fetchJson, getAuthHeaders } from './apiClient';
 
 export interface AuthUser {
   username: string;
@@ -16,10 +17,6 @@ interface BackendAuthResponse {
   user?: AuthUser;
 }
 
-function buildUrl(path: string): string {
-  return `${API_BASE_URL}${path}`;
-}
-
 interface PostAuthOptions {
   displayName?: string;
 }
@@ -35,34 +32,11 @@ async function postAuth(path: string, email: string, password: string, options?:
     payloadBody.display_name = options.displayName;
   }
 
-  const response = await fetch(buildUrl(path), {
+  return fetchJson<BackendAuthResponse>(path, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payloadBody),
   });
-
-  let payload: BackendAuthResponse = {};
-  try {
-    payload = (await response.json()) as BackendAuthResponse;
-  } catch {
-    payload = {};
-  }
-
-  if (!response.ok) {
-    const message = payload.detail || payload.message || 'Request failed';
-    throw new Error(message);
-  }
-
-  return payload;
-}
-
-function getAuthToken(): string | null {
-  return localStorage.getItem('auth_token');
-}
-
-function authHeaders(): HeadersInit {
-  const token = getAuthToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 export async function loginWithBackend(email: string, password: string): Promise<{ token: string; message: string; user: AuthUser }> {
@@ -96,29 +70,19 @@ export async function signupWithBackend(email: string, password: string, display
 }
 
 export async function fetchCurrentUserProfile(): Promise<AuthUser> {
-  const response = await fetch(buildUrl(API_ROUTES.profile), {
+  return fetchJson<AuthUser>(API_ROUTES.profile, {
     method: 'GET',
     headers: {
-      ...authHeaders(),
+      ...getAuthHeaders(),
     },
   });
-
-  if (!response.ok) {
-    throw new Error('Failed to fetch user profile');
-  }
-
-  return (await response.json()) as AuthUser;
 }
 
 export async function logoutFromBackend(): Promise<void> {
-  const response = await fetch(buildUrl(API_ROUTES.logout), {
+  await fetchJson<void>(API_ROUTES.logout, {
     method: 'POST',
     headers: {
-      ...authHeaders(),
+      ...getAuthHeaders(),
     },
   });
-
-  if (!response.ok) {
-    throw new Error('Failed to logout session');
-  }
 }

@@ -1,4 +1,5 @@
-import { API_BASE_URL, API_ROUTES } from '../config/api';
+import { API_ROUTES } from '../config/api';
+import { buildApiUrl, getAuthHeaders, getAuthToken } from './apiClient';
 
 export interface ExportTrackingPayload {
   action: 'copy' | 'download';
@@ -11,28 +12,19 @@ export interface ExportTrackingPayload {
   error?: string;
 }
 
-function getAuthHeaders(): HeadersInit {
-  const token = localStorage.getItem('auth_token');
-  if (!token) {
-    return { 'Content-Type': 'application/json' };
-  }
-
-  return {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${token}`,
-  };
-}
-
 export async function trackExportEvent(payload: ExportTrackingPayload): Promise<void> {
-  const token = localStorage.getItem('auth_token');
+  const token = getAuthToken();
   if (!token) {
     return;
   }
 
   try {
-    await fetch(`${API_BASE_URL}${API_ROUTES.exportEvents}`, {
+    await fetch(buildApiUrl(API_ROUTES.exportEvents), {
       method: 'POST',
-      headers: getAuthHeaders(),
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
       body: JSON.stringify(payload),
     });
   } catch {

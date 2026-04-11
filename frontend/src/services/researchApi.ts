@@ -1,5 +1,6 @@
-import { API_BASE_URL, API_ROUTES } from '../config/api';
+import { API_ROUTES } from '../config/api';
 import { AgentState } from '../types';
+import { buildApiUrl, getAuthToken } from './apiClient';
 
 export interface StreamCallbacks {
   onLog: (line: string) => void;
@@ -60,13 +61,13 @@ function normalizeAgentState(query: string, payload: unknown): AgentState {
 }
 
 export function streamResearch(query: string, callbacks: StreamCallbacks): () => void {
-  const authToken = localStorage.getItem('auth_token');
+  const authToken = getAuthToken();
   const streamParams = new URLSearchParams({ query });
   if (authToken) {
     streamParams.set('token', authToken);
   }
 
-  const streamUrl = `${API_BASE_URL}${API_ROUTES.runResearchStream}?${streamParams.toString()}`;
+  const streamUrl = `${buildApiUrl(API_ROUTES.runResearchStream)}?${streamParams.toString()}`;
 
   const source = new EventSource(streamUrl);
 
