@@ -9,9 +9,10 @@ This document lists UI features that exist in the frontend but are not currently
 - Fallback behavior: if SSE fails before any message arrives, deterministic simulated logs are used to preserve UX continuity.
 
 ## 2) Structured AgentState response contract
-- Frontend capability: expects rich `AgentState` fields (`subqueries`, `raw_data`, `review_decision`, etc.).
-- Backend reality: `run_research_agent` returns a generic result payload and does not guarantee full `AgentState` shape.
-- Current frontend behavior: response is normalized into the UI `AgentState` model with safe defaults.
+- Status: implemented.
+- Backend now normalizes and validates `AgentState` for both `POST /users/run_research_agent` and SSE `complete` events.
+- Contract guarantees these fields: `user_query`, `subqueries`, `raw_data`, `final_output`, `review_decision`, `review_feedback`, `revision_count`.
+- Frontend normalization remains in place as a defensive fallback for transient/non-conforming payloads.
 
 ## 3) Token-based auth/session backend
 - Frontend capability: stores a token and guards routes as if token auth exists.

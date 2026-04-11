@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
@@ -8,7 +8,7 @@ from services.graph import graph
 
 
 class ResearchResponse(BaseModel):
-    result: Dict[str, Any]
+    result: "AgentStateResponse"
 
 
 class ResearchRequest(BaseModel):
@@ -22,6 +22,16 @@ class SignupRequest(BaseModel):
 
 class SignupResponse(BaseModel):
     message: str
+
+
+class AgentStateResponse(BaseModel):
+    user_query: str
+    subqueries: List[str]
+    raw_data: List[str]
+    final_output: str
+    review_decision: str
+    review_feedback: str
+    revision_count: int
 
 
 STEP_LOGS = {
@@ -48,6 +58,25 @@ def _sse_event(payload: Dict[str, Any]) -> str:
     return f"data: {json.dumps(payload)}\n\n"
 
 
+def _normalize_agent_state(query: str, payload: Any) -> Dict[str, Any]:
+    source = payload if isinstance(payload, dict) else {}
+
+    subqueries = source.get("subqueries", [])
+    raw_data = source.get("raw_data", [])
+
+    normalized = {
+        "user_query": source.get("user_query") if isinstance(source.get("user_query"), str) else query,
+        "subqueries": [item for item in subqueries if isinstance(item, str)] if isinstance(subqueries, list) else [],
+        "raw_data": [item for item in raw_data if isinstance(item, str)] if isinstance(raw_data, list) else [],
+        "final_output": source.get("final_output") if isinstance(source.get("final_output"), str) else "",
+        "review_decision": source.get("review_decision") if isinstance(source.get("review_decision"), str) else "FAIL",
+        "review_feedback": source.get("review_feedback") if isinstance(source.get("review_feedback"), str) else "",
+        "revision_count": source.get("revision_count") if isinstance(source.get("revision_count"), int) else 0,
+    }
+
+    return AgentStateResponse(**normalized).model_dump()
+
+
 router = APIRouter()
 
 
@@ -64,8 +93,10 @@ def run_research_agent(request: ResearchRequest):
         "revision_count": 0,
     })
 
+    normalized_result = _normalize_agent_state(query, result)
+
     return {
-        "result": result
+        "result": normalized_result
     }
 
 
@@ -91,7 +122,7 @@ def run_research_agent_stream(query: str):
                     if isinstance(update, dict):
                         state.update(update)
 
-            yield _sse_event({"type": "complete", "agentState": state})
+            yield _sse_event({"type": "complete", "agentState": _normalize_agent_state(query, state)})
         except Exception as exc:
             yield _sse_event({"type": "error", "message": str(exc)})
 
