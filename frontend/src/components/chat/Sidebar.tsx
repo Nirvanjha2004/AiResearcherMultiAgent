@@ -15,6 +15,7 @@ interface SidebarProps {
   onOpenPalette: () => void;
   userEmail: string;
   onLogout: () => void;
+  testId?: string;
 }
 
 function formatDate(iso: string): string {
@@ -31,6 +32,7 @@ export function Sidebar({
   onOpenPalette,
   userEmail,
   onLogout,
+  testId = 'sidebar',
 }: SidebarProps) {
   const filteredSessions = sessions.filter((session) =>
     session.query.toLowerCase().includes(searchValue.toLowerCase()),
@@ -38,7 +40,7 @@ export function Sidebar({
 
   return (
     <aside
-      data-testid="sidebar"
+      data-testid={testId}
       className="relative flex h-full w-full flex-col border-r border-zinc-800/90 bg-zinc-950/70 p-4 backdrop-blur-xl"
     >
       <div className="mb-4 space-y-3">

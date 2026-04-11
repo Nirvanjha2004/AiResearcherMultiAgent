@@ -1,6 +1,6 @@
 import { API_ROUTES } from '../config/api';
 import { AgentState } from '../types';
-import { buildApiUrl, getAuthToken } from './apiClient';
+import { buildApiUrl, getAuthHeaders } from './apiClient';
 
 export interface StreamCallbacks {
   onLog: (line: string) => void;
@@ -60,21 +60,44 @@ function normalizeAgentState(query: string, payload: unknown): AgentState {
   };
 }
 
-export function streamResearch(query: string, callbacks: StreamCallbacks): () => void {
-  const authToken = getAuthToken();
-  const streamParams = new URLSearchParams({ query });
-  if (authToken) {
-    streamParams.set('token', authToken);
+async function* parseSSEStream(reader: ReadableStreamDefaultReader<Uint8Array>): AsyncGenerator<string> {
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          yield line.slice(6);
+        }
+      }
+    }
+
+    if (buffer) {
+      if (buffer.startsWith('data: ')) {
+        yield buffer.slice(6);
+      }
+    }
+  } finally {
+    reader.releaseLock();
   }
+}
 
-  const streamUrl = `${buildApiUrl(API_ROUTES.runResearchStream)}?${streamParams.toString()}`;
-
-  const source = new EventSource(streamUrl);
+export function streamResearch(query: string, callbacks: StreamCallbacks): () => void {
+  const streamUrl = `${buildApiUrl(API_ROUTES.runResearchStream)}?${new URLSearchParams({ query }).toString()}`;
 
   let stopped = false;
   let completed = false;
   let hasReceivedMessage = false;
   let fallbackInterval: ReturnType<typeof setInterval> | null = null;
+  let controller: AbortController | null = new AbortController();
 
   const stopFallbackIfRunning = () => {
     if (fallbackInterval) {
@@ -113,70 +136,96 @@ export function streamResearch(query: string, callbacks: StreamCallbacks): () =>
     }, 400);
   };
 
-  source.addEventListener('message', (event: MessageEvent) => {
-    if (stopped || completed) {
-      return;
-    }
-
-    hasReceivedMessage = true;
-
-    let payload: unknown;
+  (async () => {
     try {
-      payload = JSON.parse(event.data);
-    } catch {
-      return;
-    }
+      if (!controller) return;
 
-    if (!payload || typeof payload !== 'object') {
-      return;
-    }
+      const response = await fetch(streamUrl, {
+        method: 'GET',
+        headers: getAuthHeaders(),
+        signal: controller.signal,
+      });
 
-    const message = payload as {
-      type?: string;
-      line?: string;
-      message?: string;
-      agentState?: unknown;
-    };
+      if (!response.ok || !response.body) {
+        if (!hasReceivedMessage) {
+          startMockFallback();
+        } else {
+          completed = true;
+          callbacks.onError(`Stream request failed with status ${response.status}`);
+        }
+        return;
+      }
 
-    if (message.type === 'log' && typeof message.line === 'string') {
-      callbacks.onLog(message.line);
-      return;
-    }
+      const reader = response.body.getReader();
 
-    if (message.type === 'complete') {
+      for await (const dataLine of parseSSEStream(reader)) {
+        if (stopped || completed) {
+          return;
+        }
+
+        hasReceivedMessage = true;
+
+        let payload: unknown;
+        try {
+          payload = JSON.parse(dataLine);
+        } catch {
+          continue;
+        }
+
+        if (!payload || typeof payload !== 'object') {
+          continue;
+        }
+
+        const message = payload as {
+          type?: string;
+          line?: string;
+          message?: string;
+          agentState?: unknown;
+        };
+
+        if (message.type === 'log' && typeof message.line === 'string') {
+          callbacks.onLog(message.line);
+          continue;
+        }
+
+        if (message.type === 'complete') {
+          completed = true;
+          callbacks.onComplete(normalizeAgentState(query, message.agentState));
+          return;
+        }
+
+        if (message.type === 'error') {
+          completed = true;
+          callbacks.onError(message.message || 'Research stream failed');
+          return;
+        }
+      }
+    } catch (error) {
+      if (stopped || completed) {
+        return;
+      }
+
+      if (error instanceof Error && error.name === 'AbortError') {
+        return;
+      }
+
+      // If the stream fails before first payload, keep UX alive with deterministic fallback logs.
+      if (!hasReceivedMessage) {
+        startMockFallback();
+        return;
+      }
+
       completed = true;
-      source.close();
-      callbacks.onComplete(normalizeAgentState(query, message.agentState));
-      return;
+      callbacks.onError('Research stream disconnected');
     }
-
-    if (message.type === 'error') {
-      completed = true;
-      source.close();
-      callbacks.onError(message.message || 'Research stream failed');
-    }
-  });
-
-  source.onerror = () => {
-    if (stopped || completed) {
-      return;
-    }
-
-    source.close();
-
-    // If the stream fails before first payload, keep UX alive with deterministic fallback logs.
-    if (!hasReceivedMessage) {
-      startMockFallback();
-      return;
-    }
-
-    completed = true;
-    callbacks.onError('Research stream disconnected');
-  };
+  })();
 
   return () => {
     stopped = true;
     stopFallbackIfRunning();
-    source.close();
+    if (controller) {
+      controller.abort();
+      controller = null;
+    }
   };
 }

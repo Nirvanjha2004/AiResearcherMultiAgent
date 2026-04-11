@@ -70,6 +70,8 @@ export function Dashboard() {
       onSendMessage={startResearch}
       userEmail={user?.email ?? 'guest@example.com'}
       onLogout={logout}
+      testIdMainArea="main-area"
+      testIdSidebar="sidebar"
     />
   );
 }

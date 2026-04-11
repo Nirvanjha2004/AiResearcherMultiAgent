@@ -22,6 +22,8 @@ interface ChatLayoutProps {
   onSendMessage: (query: string) => void;
   userEmail: string;
   onLogout: () => void;
+  testIdMainArea?: string;
+  testIdSidebar?: string;
 }
 
 function buildMessages(uiState: UIState, currentQuery: string, agentState: AgentState | null): ChatMessage[] {
@@ -70,6 +72,8 @@ export function ChatLayout({
   onSendMessage,
   userEmail,
   onLogout,
+  testIdMainArea,
+  testIdSidebar,
 }: ChatLayoutProps) {
   const [searchValue, setSearchValue] = useState('');
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -118,9 +122,10 @@ export function ChatLayout({
           onOpenPalette={() => setPaletteOpen(true)}
           userEmail={userEmail}
           onLogout={onLogout}
+          testId={testIdSidebar}
         />
 
-        <section className="relative flex min-h-0 flex-col">
+        <section className="relative flex min-h-0 flex-col" data-testid={testIdMainArea}>
           <div className="absolute right-4 top-3 z-20">
             <ThemeToggle />
           </div>

@@ -81,7 +81,17 @@ Status update:
 - Password storage now uses `pbkdf2_sha256` hashes with automatic migration for legacy plaintext records on successful login.
 - File-backed stores now use atomic write replacement to reduce corruption risk during crashes/interrupted writes.
 - Session validation and logout now require bearer auth headers (query-token fallback removed for these routes).
-- Query-token support remains only on the SSE stream endpoint for current browser `EventSource` compatibility.
+- SSE stream endpoint converted to fetch-based parsing with authorization headers; query-token support completely removed.
+- All auth routes now enforce bearer-header-only auth.
+- Session registry replaced in-memory dict with file-backed persistence (`active_sessions.json`) using atomic writes.
+- Frontend research API now uses fetch-based SSE parsing with auth headers instead of EventSource query tokens.
+- Added test ID support to chat components (Dashboard, ChatLayout, Sidebar) for better test coverage.
+
+Remaining work (Phase 5 & 6):
+- Add structured logging around backend failures for observability.
+- Consider database migration for production-grade persistence (currently file-backed).
+- Further tighten tests around the active chat-first user journey.
+- Consider request ID tracking for debugging/correlation across the distributed flow.
 
 ### Phase 6: Remove dead code and stale tests
 - Delete or consolidate legacy components that are no longer part of the runtime flow.

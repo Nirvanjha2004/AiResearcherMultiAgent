@@ -61,9 +61,8 @@ def run_research_agent(request: ResearchRequest, authorization: Optional[str] = 
 def run_research_agent_stream(
     query: str,
     authorization: Optional[str] = Header(default=None),
-    token: Optional[str] = Query(default=None),
 ):
-    _authorize(authorization, token)
+    _authorize(authorization)
 
     def event_generator():
         state: Dict[str, Any] = {

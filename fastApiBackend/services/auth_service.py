@@ -11,12 +11,36 @@ from schemas import AuthResponse, ProfileUpdateRequest, SessionResponse, UserPro
 
 USERS_FILE = "users.txt"
 USER_PROFILES_FILE = "user_profiles.json"
+ACTIVE_SESSIONS_FILE = "active_sessions.json"
 AUTH_SECRET = os.getenv("AUTH_SECRET", "dev-secret-change-me")
 TOKEN_TTL_SECONDS = 60 * 60 * 24
 PASSWORD_SCHEME = "pbkdf2_sha256"
 PASSWORD_ITERATIONS = 260000
 PASSWORD_SALT_BYTES = 16
-ACTIVE_SESSIONS: Dict[str, Dict[str, Any]] = {}
+
+
+def read_sessions_store() -> Dict[str, Dict[str, Any]]:
+    if not os.path.exists(ACTIVE_SESSIONS_FILE):
+        return {}
+
+    try:
+        with open(ACTIVE_SESSIONS_FILE, "r") as f:
+            data = json.load(f)
+            if isinstance(data, dict):
+                return data
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+    return {}
+
+
+def write_sessions_store(store: Dict[str, Dict[str, Any]]) -> None:
+    directory = os.path.dirname(ACTIVE_SESSIONS_FILE) or "."
+    with tempfile.NamedTemporaryFile("w", delete=False, dir=directory) as temp_file:
+        json.dump(store, temp_file)
+        temp_path = temp_file.name
+
+    os.replace(temp_path, ACTIVE_SESSIONS_FILE)
 
 
 def b64url(data: bytes) -> str:
@@ -223,7 +247,9 @@ def extract_bearer_token(authorization: Optional[str], token_query: Optional[str
 
 
 def register_session(token: str, username: str, exp: int) -> None:
-    ACTIVE_SESSIONS[token] = {"username": username, "exp": exp}
+    store = read_sessions_store()
+    store[token] = {"username": username, "exp": exp}
+    write_sessions_store(store)
 
 
 def authenticate(authorization: Optional[str], token_query: Optional[str] = None) -> str:
@@ -232,12 +258,14 @@ def authenticate(authorization: Optional[str], token_query: Optional[str] = None
     if payload is None:
         raise ValueError("Invalid or expired auth token")
 
-    session = ACTIVE_SESSIONS.get(token)
+    sessions = read_sessions_store()
+    session = sessions.get(token)
     if not session:
         raise ValueError("Session not found")
 
     if not isinstance(session.get("exp"), int) or session["exp"] < int(time.time()):
-        ACTIVE_SESSIONS.pop(token, None)
+        sessions.pop(token, None)
+        write_sessions_store(sessions)
         raise ValueError("Session expired")
 
     username = payload.get("sub")
@@ -249,4 +277,6 @@ def authenticate(authorization: Optional[str], token_query: Optional[str] = None
 
 def logout_token(authorization: Optional[str], token_query: Optional[str] = None) -> None:
     auth_token = extract_bearer_token(authorization, token_query)
-    ACTIVE_SESSIONS.pop(auth_token, None)
+    sessions = read_sessions_store()
+    sessions.pop(auth_token, None)
+    write_sessions_store(sessions)
