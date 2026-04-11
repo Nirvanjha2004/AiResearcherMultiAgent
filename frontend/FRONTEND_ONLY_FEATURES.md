@@ -27,9 +27,11 @@ This document lists UI features that exist in the frontend but are not currently
 - Backend OAuth endpoints remain not implemented.
 
 ## 5) Server-side session/history persistence
-- Frontend capability: session list and active-session state exist in the dashboard.
-- Backend reality: no endpoints for creating/listing/loading saved research sessions.
-- Current frontend behavior: sessions are persisted only in browser `localStorage`.
+- Status: implemented.
+- Backend now provides authenticated session persistence endpoints:
+	- `GET /users/research_sessions` to list saved sessions for the signed-in user.
+	- `POST /users/research_sessions` to create/update saved sessions.
+- Frontend now syncs dashboard sessions with backend persistence and keeps `localStorage` as a cache fallback when sync is unavailable.
 
 ## 6) File export/copy lifecycle tracking
 - Frontend capability: copy-to-clipboard confirmation and markdown download actions.

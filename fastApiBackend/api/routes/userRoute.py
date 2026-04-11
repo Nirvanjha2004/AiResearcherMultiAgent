@@ -41,6 +41,14 @@ class SessionResponse(BaseModel):
     username: str
 
 
+class PersistedSession(BaseModel):
+    id: str
+    query: str
+    result: str
+    createdAt: str
+    agentState: "AgentStateResponse"
+
+
 class AgentStateResponse(BaseModel):
     user_query: str
     subqueries: List[str]
@@ -71,6 +79,7 @@ STEP_LOGS = {
 }
 
 USERS_FILE = "users.txt"
+RESEARCH_SESSIONS_FILE = "research_sessions.json"
 AUTH_SECRET = os.getenv("AUTH_SECRET", "dev-secret-change-me")
 TOKEN_TTL_SECONDS = 60 * 60 * 24
 ACTIVE_SESSIONS: Dict[str, Dict[str, Any]] = {}
@@ -145,6 +154,26 @@ def _save_user(username: str, password: str) -> None:
         f.write(f"{username}:{password}\n")
 
 
+def _read_sessions_store() -> Dict[str, List[Dict[str, Any]]]:
+    if not os.path.exists(RESEARCH_SESSIONS_FILE):
+        return {}
+
+    try:
+        with open(RESEARCH_SESSIONS_FILE, "r") as f:
+            data = json.load(f)
+            if isinstance(data, dict):
+                return data
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+    return {}
+
+
+def _write_sessions_store(store: Dict[str, List[Dict[str, Any]]]) -> None:
+    with open(RESEARCH_SESSIONS_FILE, "w") as f:
+        json.dump(store, f)
+
+
 def _extract_bearer_token(authorization: Optional[str], token_query: Optional[str] = None) -> str:
     if authorization and authorization.lower().startswith("bearer "):
         token = authorization.split(" ", 1)[1].strip()
@@ -180,6 +209,26 @@ def _authenticate(authorization: Optional[str], token_query: Optional[str] = Non
         raise HTTPException(status_code=401, detail="Invalid session")
 
     return username
+
+
+def _normalize_persisted_session(payload: Any) -> Dict[str, Any]:
+    source = payload if isinstance(payload, dict) else {}
+
+    session_id = source.get("id") if isinstance(source.get("id"), str) else f"session-{int(time.time() * 1000)}"
+    query = source.get("query") if isinstance(source.get("query"), str) else ""
+    result = source.get("result") if isinstance(source.get("result"), str) else ""
+    created_at = source.get("createdAt") if isinstance(source.get("createdAt"), str) else time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+    agent_state_payload = source.get("agentState", {})
+    normalized_agent_state = _normalize_agent_state(query, agent_state_payload)
+
+    return PersistedSession(
+        id=session_id,
+        query=query,
+        result=result,
+        createdAt=created_at,
+        agentState=AgentStateResponse(**normalized_agent_state),
+    ).model_dump()
 
 
 def _normalize_agent_state(query: str, payload: Any) -> Dict[str, Any]:
@@ -330,3 +379,36 @@ def logout(
     auth_token = _extract_bearer_token(authorization, token)
     ACTIVE_SESSIONS.pop(auth_token, None)
     return {"message": "Logged out successfully"}
+
+
+@router.get("/research_sessions", response_model=List[PersistedSession])
+def list_research_sessions(
+    authorization: Optional[str] = Header(default=None),
+):
+    username = _authenticate(authorization)
+    store = _read_sessions_store()
+    sessions = store.get(username, [])
+    return [_normalize_persisted_session(session) for session in sessions]
+
+
+@router.post("/research_sessions", response_model=PersistedSession)
+def save_research_session(
+    session: PersistedSession,
+    authorization: Optional[str] = Header(default=None),
+):
+    username = _authenticate(authorization)
+    store = _read_sessions_store()
+    user_sessions = store.get(username, [])
+
+    normalized = _normalize_persisted_session(session.model_dump())
+
+    existing_index = next((index for index, item in enumerate(user_sessions) if item.get("id") == normalized["id"]), None)
+    if existing_index is not None:
+        user_sessions[existing_index] = normalized
+    else:
+        user_sessions.insert(0, normalized)
+
+    store[username] = user_sessions
+    _write_sessions_store(store)
+
+    return normalized
