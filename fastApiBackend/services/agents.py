@@ -4,8 +4,8 @@ import operator
 from typing import TypedDict, Annotated, List
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_community.tools import DuckDuckGoSearchResults
-from llm import llm # Ensure this points to your configured Groq/LLM instance
-from schema import AgentState
+from core.llm import llm # Ensure this points to your configured Groq/LLM instance
+from models.schema import AgentState
 
 # ==========================================
 # 2. PROMPTS

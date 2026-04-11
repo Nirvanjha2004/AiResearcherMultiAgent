@@ -1,6 +1,6 @@
 from langgraph.graph import StateGraph, START, END
-from schema import AgentState # Assuming your state is in schema.py
-from agents import subQueryAgent, fetchRawDataAgent, writerAgent, review_agent
+from models.schema import AgentState # Assuming your state is in schema.py
+from services.agents import subQueryAgent, fetchRawDataAgent, writerAgent, review_agent
 
 # 1. Define the routing logic safely
 def decide(state: AgentState):

@@ -3,9 +3,10 @@
 This document lists UI features that exist in the frontend but are not currently implemented by backend APIs in `fastApiBackend`.
 
 ## 1) Real-time SSE research streaming
-- Frontend capability: live incremental logs/events during research execution.
-- Backend reality: only `POST /users/run_research_agent` exists (single request/response), no SSE endpoint.
-- Current frontend behavior: simulated progress logs are shown while waiting for the POST response.
+- Status: implemented.
+- Backend now exposes `GET /users/run_research_agent/stream?query=...` and streams JSON SSE messages.
+- Frontend now consumes live stream events with `EventSource` and updates logs in real time.
+- Fallback behavior: if SSE fails before any message arrives, deterministic simulated logs are used to preserve UX continuity.
 
 ## 2) Structured AgentState response contract
 - Frontend capability: expects rich `AgentState` fields (`subqueries`, `raw_data`, `review_decision`, etc.).

@@ -1,6 +1,7 @@
 # ==========================================
 # 1. STATE DEFINITION (Crucial for LangGraph)
 # ==========================================
+import operator
 from typing import TypedDict, Annotated, List
 
 class AgentState(TypedDict):
