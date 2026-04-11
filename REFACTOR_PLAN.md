@@ -133,3 +133,10 @@ Start with a short cleanup sprint focused on:
 - and splitting the backend monolith into route/service layers.
 
 After that, move persistence to a proper database and replace custom auth/session storage with hardened infrastructure.
+
+## Refactor Progress
+- Completed: removed the duplicate legacy `App` implementation.
+- Completed: extracted shared frontend API helpers for URL building, auth headers, and JSON requests.
+- Completed: split backend auth/profile/session/export/research logic into focused service modules.
+- Completed: removed the legacy `MainArea` and old sidebar component tree.
+- Next: remove or consolidate the remaining legacy UI primitives that are only used by obsolete tests, then tighten the test suite around the active chat-first flow.
