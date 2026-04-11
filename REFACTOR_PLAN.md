@@ -80,6 +80,8 @@ Move the implementation details into dedicated backend services:
 Status update:
 - Password storage now uses `pbkdf2_sha256` hashes with automatic migration for legacy plaintext records on successful login.
 - File-backed stores now use atomic write replacement to reduce corruption risk during crashes/interrupted writes.
+- Session validation and logout now require bearer auth headers (query-token fallback removed for these routes).
+- Query-token support remains only on the SSE stream endpoint for current browser `EventSource` compatibility.
 
 ### Phase 6: Remove dead code and stale tests
 - Delete or consolidate legacy components that are no longer part of the runtime flow.

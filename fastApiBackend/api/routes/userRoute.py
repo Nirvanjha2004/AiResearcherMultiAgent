@@ -152,11 +152,8 @@ def login(request: SignupRequest):
 
 
 @router.get("/session", response_model=SessionResponse)
-def validate_session(
-    authorization: Optional[str] = Header(default=None),
-    token: Optional[str] = Query(default=None),
-):
-    username = _authorize(authorization, token)
+def validate_session(authorization: Optional[str] = Header(default=None)):
+    username = _authorize(authorization)
     return {"authenticated": True, "username": username, "user": get_user_profile(username)}
 
 
@@ -178,12 +175,9 @@ def update_profile(request: ProfileUpdateRequest, authorization: Optional[str] =
 
 
 @router.post("/logout", response_model=SignupResponse)
-def logout(
-    authorization: Optional[str] = Header(default=None),
-    token: Optional[str] = Query(default=None),
-):
+def logout(authorization: Optional[str] = Header(default=None)):
     try:
-        logout_token(authorization, token)
+        logout_token(authorization)
     except ValueError as error:
         raise _to_http_error(error) from error
     return {"message": "Logged out successfully"}
