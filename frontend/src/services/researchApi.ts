@@ -60,6 +60,24 @@ function normalizeAgentState(query: string, payload: unknown): AgentState {
   };
 }
 
+async function runResearchRequest(query: string): Promise<AgentState> {
+  const response = await fetch(buildApiUrl(API_ROUTES.runResearch), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ query }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Research request failed with status ${response.status}`);
+  }
+
+  const payload = await response.json();
+  return normalizeAgentState(query, payload && typeof payload === 'object' && 'result' in payload ? (payload as { result?: unknown }).result : payload);
+}
+
 async function* parseSSEStream(reader: ReadableStreamDefaultReader<Uint8Array>): AsyncGenerator<string> {
   const decoder = new TextDecoder();
   let buffer = '';
@@ -136,6 +154,25 @@ export function streamResearch(query: string, callbacks: StreamCallbacks): () =>
     }, 400);
   };
 
+  const startNonStreamingFallback = async () => {
+    try {
+      const state = await runResearchRequest(query);
+      if (stopped || completed) {
+        return;
+      }
+
+      completed = true;
+      callbacks.onLog('--- FALLBACK RESEARCH REQUEST RUNNING ---');
+      callbacks.onComplete(state);
+    } catch {
+      if (stopped || completed) {
+        return;
+      }
+
+      startMockFallback();
+    }
+  };
+
   (async () => {
     try {
       if (!controller) return;
@@ -148,7 +185,7 @@ export function streamResearch(query: string, callbacks: StreamCallbacks): () =>
 
       if (!response.ok || !response.body) {
         if (!hasReceivedMessage) {
-          startMockFallback();
+          await startNonStreamingFallback();
         } else {
           completed = true;
           callbacks.onError(`Stream request failed with status ${response.status}`);
@@ -211,7 +248,7 @@ export function streamResearch(query: string, callbacks: StreamCallbacks): () =>
 
       // If the stream fails before first payload, keep UX alive with deterministic fallback logs.
       if (!hasReceivedMessage) {
-        startMockFallback();
+        await startNonStreamingFallback();
         return;
       }
 

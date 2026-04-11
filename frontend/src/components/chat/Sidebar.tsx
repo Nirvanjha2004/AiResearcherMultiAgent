@@ -1,10 +1,11 @@
 import { motion } from 'framer-motion';
 import { ChangeEvent, FormEvent, useEffect, useState } from 'react';
-import { Command, Plus } from 'lucide-react';
+import { ArrowDownToLine, Command, Copy, Plus } from 'lucide-react';
 import { Session } from '../../types';
 import { HoverBorderGradient } from '../ui/hover-border-gradient';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../../context/AuthContext';
+import { listExportEvents, ExportLifecycleEvent } from '../../services/exportTrackingApi';
 
 interface SidebarProps {
   sessions: Session[];
@@ -42,10 +43,30 @@ export function Sidebar({
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileMessage, setProfileMessage] = useState<string | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
+  const [exportEvents, setExportEvents] = useState<ExportLifecycleEvent[]>([]);
+  const [isLoadingExports, setIsLoadingExports] = useState(false);
 
   useEffect(() => {
     setDisplayName(userDisplayName);
   }, [userDisplayName]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    void (async () => {
+      setIsLoadingExports(true);
+      const events = await listExportEvents();
+
+      if (!mounted) return;
+
+      setExportEvents(events.slice(0, 4));
+      setIsLoadingExports(false);
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const filteredSessions = sessions.filter((session) =>
     session.query.toLowerCase().includes(searchValue.toLowerCase()),
@@ -77,6 +98,10 @@ export function Sidebar({
 
   const initialsSource = userDisplayName || userEmail;
   const initials = initialsSource.slice(0, 1).toUpperCase();
+  const formatExportEventTime = (createdAt: string): string => {
+    if (!createdAt) return 'just now';
+    return new Date(createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
 
   return (
     <aside
@@ -137,6 +162,45 @@ export function Sidebar({
             </motion.button>
           ))
         )}
+
+        <div className="mt-4 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-3">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <div>
+              <p className="text-sm font-medium text-zinc-100">Recent exports</p>
+              <p className="text-[11px] text-zinc-500">Copy and download activity from the backend</p>
+            </div>
+            <ArrowDownToLine size={14} className="text-cyan-400" />
+          </div>
+
+          {isLoadingExports ? (
+            <p className="text-xs text-zinc-500">Loading export history...</p>
+          ) : exportEvents.length === 0 ? (
+            <p className="text-xs text-zinc-500">No export activity yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {exportEvents.map((event: ExportLifecycleEvent) => (
+                <div key={event.id} className="rounded-xl border border-zinc-800 bg-zinc-950/80 px-3 py-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-medium text-zinc-100">
+                        {event.action === 'copy' ? 'Copied response' : 'Downloaded export'}
+                      </p>
+                      <p className="text-[11px] text-zinc-500">
+                        {event.status} · {event.format} · {formatExportEventTime(event.created_at)}
+                      </p>
+                    </div>
+                    {event.action === 'copy' ? (
+                      <Copy size={13} className="shrink-0 text-zinc-400" />
+                    ) : (
+                      <ArrowDownToLine size={13} className="shrink-0 text-zinc-400" />
+                    )}
+                  </div>
+                  {event.error && <p className="mt-1 text-[11px] text-red-400">{event.error}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="mt-3 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-3">

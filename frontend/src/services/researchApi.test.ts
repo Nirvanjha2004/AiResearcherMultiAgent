@@ -108,4 +108,40 @@ describe('streamResearch', () => {
 
     expect(onComplete).not.toHaveBeenCalled();
   });
+
+  it('falls back to the non-streaming research endpoint when the stream has no body', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, body: null, status: 200 })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          result: {
+            user_query: 'fallback query',
+            subqueries: ['one'],
+            raw_data: ['data'],
+            final_output: '# Fallback Report',
+            review_decision: 'PASS',
+            review_feedback: '',
+            revision_count: 1,
+          },
+        }),
+      });
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    streamResearch('fallback query', callbacks);
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(onComplete).toHaveBeenCalledWith(
+      expect.objectContaining({
+        user_query: 'fallback query',
+        final_output: '# Fallback Report',
+      })
+    );
+    expect(onError).not.toHaveBeenCalled();
+  });
 });

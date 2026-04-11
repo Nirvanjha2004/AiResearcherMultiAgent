@@ -209,4 +209,6 @@ After that, move persistence to a proper database and replace custom auth/sessio
 - Completed: pruned dead shared prop interfaces that only existed for deleted components.
 - Completed: wired backend session validation into the frontend auth bootstrap flow.
 - Completed: wired backend profile updates into the sidebar profile editor.
+- Completed: wired backend export history into the sidebar as a recent activity panel.
+- Completed: wired the non-streaming research endpoint as the SSE fallback path.
 - Next: tighten the test suite around the active chat-first flow and add coverage for the refactored backend service boundaries.

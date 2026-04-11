@@ -21,6 +21,11 @@ vi.mock('../services/authApi', () => ({
     },
   })),
   logoutFromBackend: vi.fn(async () => undefined),
+
+  vi.mock('../services/exportTrackingApi', () => ({
+    listExportEvents: vi.fn(async () => []),
+    trackExportEvent: vi.fn(async () => undefined),
+  }));
   updateUserProfile: vi.fn(async (displayName: string) => ({
     username: 'test@example.com',
     email: 'test@example.com',
