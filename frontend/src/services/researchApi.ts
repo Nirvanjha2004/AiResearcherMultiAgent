@@ -60,7 +60,13 @@ function normalizeAgentState(query: string, payload: unknown): AgentState {
 }
 
 export function streamResearch(query: string, callbacks: StreamCallbacks): () => void {
-  const streamUrl = `${API_BASE_URL}${API_ROUTES.runResearchStream}?query=${encodeURIComponent(query)}`;
+  const authToken = localStorage.getItem('auth_token');
+  const streamParams = new URLSearchParams({ query });
+  if (authToken) {
+    streamParams.set('token', authToken);
+  }
+
+  const streamUrl = `${API_BASE_URL}${API_ROUTES.runResearchStream}?${streamParams.toString()}`;
 
   const source = new EventSource(streamUrl);
 

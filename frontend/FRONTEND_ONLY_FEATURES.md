@@ -15,9 +15,11 @@ This document lists UI features that exist in the frontend but are not currently
 - Frontend normalization remains in place as a defensive fallback for transient/non-conforming payloads.
 
 ## 3) Token-based auth/session backend
-- Frontend capability: stores a token and guards routes as if token auth exists.
-- Backend reality: `/users/login` and `/users/signup` only return a text message; no JWT/session token endpoint.
-- Current frontend behavior: uses backend login/signup for validation, then stores a synthetic client token for route-guard continuity.
+- Status: implemented.
+- Backend `POST /users/signup` and `POST /users/login` now return signed bearer tokens and session metadata.
+- Backend provides `GET /users/session` for token/session validation and `POST /users/logout` for session invalidation.
+- Research endpoints now require a valid token-backed session.
+- Frontend stores and uses the real backend-issued token (no synthetic token fallback).
 
 ## 4) Google OAuth login button
 - Frontend capability: Google OAuth button is present in login and signup forms.

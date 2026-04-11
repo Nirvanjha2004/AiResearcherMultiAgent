@@ -2,6 +2,10 @@ import { API_BASE_URL, API_ROUTES } from '../config/api';
 
 interface BackendAuthResponse {
   message?: string;
+  token?: string;
+  token_type?: string;
+  expires_in?: number;
+  detail?: string;
 }
 
 function buildUrl(path: string): string {
@@ -23,7 +27,7 @@ async function postAuth(path: string, username: string, password: string): Promi
   }
 
   if (!response.ok) {
-    const message = payload.message || 'Request failed';
+    const message = payload.detail || payload.message || 'Request failed';
     throw new Error(message);
   }
 
@@ -34,12 +38,12 @@ export async function loginWithBackend(email: string, password: string): Promise
   const payload = await postAuth(API_ROUTES.login, email, password);
   const message = payload.message || 'Login failed';
 
-  if (!/logged in successfully/i.test(message)) {
-    throw new Error(message);
+  if (!payload.token) {
+    throw new Error('Backend did not return an auth token');
   }
 
   return {
-    token: `backend-session-${email}`,
+    token: payload.token,
     message,
   };
 }
@@ -48,12 +52,12 @@ export async function signupWithBackend(email: string, password: string): Promis
   const payload = await postAuth(API_ROUTES.signup, email, password);
   const message = payload.message || 'Sign up failed';
 
-  if (!/signed up successfully/i.test(message)) {
-    throw new Error(message);
+  if (!payload.token) {
+    throw new Error('Backend did not return an auth token');
   }
 
   return {
-    token: `backend-session-${email}`,
+    token: payload.token,
     message,
   };
 }
