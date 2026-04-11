@@ -139,4 +139,6 @@ After that, move persistence to a proper database and replace custom auth/sessio
 - Completed: extracted shared frontend API helpers for URL building, auth headers, and JSON requests.
 - Completed: split backend auth/profile/session/export/research logic into focused service modules.
 - Completed: removed the legacy `MainArea` and old sidebar component tree.
-- Next: remove or consolidate the remaining legacy UI primitives that are only used by obsolete tests, then tighten the test suite around the active chat-first flow.
+- Completed: removed the remaining legacy input/log/error/result action components and their tests.
+- Completed: pruned dead shared prop interfaces that only existed for deleted components.
+- Next: tighten the test suite around the active chat-first flow and add coverage for the refactored backend service boundaries.

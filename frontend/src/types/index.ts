@@ -38,26 +38,3 @@ export interface UseResearchReturn {
   loadSession: (session: Session) => void;
 }
 
-// Props interfaces
-export interface LogPanelProps {
-  lines: string[];
-  isLoading: boolean;
-}
-
-export interface ResultViewerProps {
-  markdown: string;
-  onNewResearch: () => void;
-  sessionId?: string | null;
-}
-
-export interface ErrorPanelProps {
-  message: string;
-  previousQuery: string;
-  onRetry: () => void;
-}
-
-export interface SessionItemProps {
-  session: Session;
-  isActive: boolean;
-  onClick: (session: Session) => void;
-}
