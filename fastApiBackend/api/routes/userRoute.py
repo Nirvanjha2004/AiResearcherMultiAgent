@@ -17,7 +17,7 @@ from schemas import (
     SignupResponse,
     UserProfile,
 )
-from services.auth_service import authenticate, create_token, get_user_profile, logout_token, read_users, register_session, save_user, upsert_user_profile
+from services.auth_service import authenticate, create_token, get_user_profile, logout_token, read_users, register_session, save_user, upsert_user_profile, verify_user_credentials
 from services.graph import graph
 from services.research_service import STEP_LOGS, normalize_agent_state, normalize_export_event, normalize_persisted_session
 from services.storage_service import EXPORT_EVENTS_FILE, RESEARCH_SESSIONS_FILE, current_timestamp, read_json_store, write_json_store
@@ -136,8 +136,7 @@ def login(request: SignupRequest):
     username = (request.email or request.username).strip().lower()
     password = request.password
 
-    users = read_users()
-    if users.get(username) != password:
+    if not verify_user_credentials(username, password):
         raise HTTPException(status_code=401, detail="Invalid username or password")
 
     token_data = create_token(username)

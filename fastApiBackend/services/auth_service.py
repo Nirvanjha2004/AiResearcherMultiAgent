@@ -3,6 +3,7 @@ import hashlib
 import hmac
 import json
 import os
+import tempfile
 import time
 from typing import Any, Dict, Optional
 
@@ -12,6 +13,9 @@ USERS_FILE = "users.txt"
 USER_PROFILES_FILE = "user_profiles.json"
 AUTH_SECRET = os.getenv("AUTH_SECRET", "dev-secret-change-me")
 TOKEN_TTL_SECONDS = 60 * 60 * 24
+PASSWORD_SCHEME = "pbkdf2_sha256"
+PASSWORD_ITERATIONS = 260000
+PASSWORD_SALT_BYTES = 16
 ACTIVE_SESSIONS: Dict[str, Dict[str, Any]] = {}
 
 
@@ -75,9 +79,74 @@ def read_users() -> Dict[str, str]:
     return users
 
 
+def write_users(users: Dict[str, str]) -> None:
+    directory = os.path.dirname(USERS_FILE) or "."
+    with tempfile.NamedTemporaryFile("w", delete=False, dir=directory) as temp_file:
+        for username, stored_password in users.items():
+            temp_file.write(f"{username}:{stored_password}\n")
+        temp_path = temp_file.name
+
+    os.replace(temp_path, USERS_FILE)
+
+
+def hash_password(password: str, salt: Optional[bytes] = None) -> str:
+    active_salt = salt or os.urandom(PASSWORD_SALT_BYTES)
+    digest = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        active_salt,
+        PASSWORD_ITERATIONS,
+    )
+    return f"{PASSWORD_SCHEME}${PASSWORD_ITERATIONS}${b64url(active_salt)}${b64url(digest)}"
+
+
+def is_hashed_password(stored_password: str) -> bool:
+    return stored_password.startswith(f"{PASSWORD_SCHEME}$")
+
+
+def verify_password(stored_password: str, candidate_password: str) -> bool:
+    if not is_hashed_password(stored_password):
+        return hmac.compare_digest(stored_password, candidate_password)
+
+    parts = stored_password.split("$", 3)
+    if len(parts) != 4:
+        return False
+
+    _, iteration_str, salt_b64, digest_b64 = parts
+    try:
+        iterations = int(iteration_str)
+        salt = b64url_decode(salt_b64)
+        expected_digest = b64url_decode(digest_b64)
+    except (TypeError, ValueError):
+        return False
+
+    actual_digest = hashlib.pbkdf2_hmac(
+        "sha256",
+        candidate_password.encode("utf-8"),
+        salt,
+        iterations,
+    )
+    return hmac.compare_digest(actual_digest, expected_digest)
+
+
 def save_user(username: str, password: str) -> None:
-    with open(USERS_FILE, "a") as f:
-        f.write(f"{username}:{password}\n")
+    users = read_users()
+    users[username] = hash_password(password)
+    write_users(users)
+
+
+def verify_user_credentials(username: str, password: str) -> bool:
+    users = read_users()
+    stored_password = users.get(username)
+    if stored_password is None:
+        return False
+
+    valid = verify_password(stored_password, password)
+    if valid and not is_hashed_password(stored_password):
+        users[username] = hash_password(password)
+        write_users(users)
+
+    return valid
 
 
 def read_user_profiles_store() -> Dict[str, Dict[str, Any]]:
@@ -96,8 +165,12 @@ def read_user_profiles_store() -> Dict[str, Dict[str, Any]]:
 
 
 def write_user_profiles_store(store: Dict[str, Dict[str, Any]]) -> None:
-    with open(USER_PROFILES_FILE, "w") as f:
-        json.dump(store, f)
+    directory = os.path.dirname(USER_PROFILES_FILE) or "."
+    with tempfile.NamedTemporaryFile("w", delete=False, dir=directory) as temp_file:
+        json.dump(store, temp_file)
+        temp_path = temp_file.name
+
+    os.replace(temp_path, USER_PROFILES_FILE)
 
 
 def normalize_user_profile(username: str, payload: Any) -> Dict[str, Any]:

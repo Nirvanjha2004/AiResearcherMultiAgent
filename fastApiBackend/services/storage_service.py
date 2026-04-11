@@ -1,5 +1,6 @@
 import json
 import os
+import tempfile
 import time
 from typing import Any, Dict, List
 
@@ -23,8 +24,12 @@ def read_json_store(file_path: str) -> Dict[str, List[Dict[str, Any]]]:
 
 
 def write_json_store(file_path: str, store: Dict[str, List[Dict[str, Any]]]) -> None:
-    with open(file_path, "w") as f:
-        json.dump(store, f)
+    directory = os.path.dirname(file_path) or "."
+    with tempfile.NamedTemporaryFile("w", delete=False, dir=directory) as temp_file:
+        json.dump(store, temp_file)
+        temp_path = temp_file.name
+
+    os.replace(temp_path, file_path)
 
 
 def current_timestamp() -> str:

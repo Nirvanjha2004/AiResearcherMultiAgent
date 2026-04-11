@@ -77,6 +77,10 @@ Move the implementation details into dedicated backend services:
 - Avoid token-in-query usage where a safer auth flow is possible.
 - Add atomic write handling for file-backed stores if files remain in use.
 
+Status update:
+- Password storage now uses `pbkdf2_sha256` hashes with automatic migration for legacy plaintext records on successful login.
+- File-backed stores now use atomic write replacement to reduce corruption risk during crashes/interrupted writes.
+
 ### Phase 6: Remove dead code and stale tests
 - Delete or consolidate legacy components that are no longer part of the runtime flow.
 - Remove tests for deleted code.
