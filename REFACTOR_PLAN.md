@@ -89,6 +89,7 @@ Move the implementation details into dedicated backend services:
   - research stream events
   - session persistence
   - export lifecycle events
+- Centralize backend DTOs in a shared schemas module so routes and services do not redefine them.
 - Add structured logging around backend failures.
 - Make fallback behavior explicit and environment-aware.
 - Add request identifiers if the backend grows further.

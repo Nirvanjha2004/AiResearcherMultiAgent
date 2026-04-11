@@ -3,77 +3,24 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Header, HTTPException, Query
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
 
-from services.auth_service import (
+from schemas import (
     AuthResponse,
+    ExportEventRequest,
+    ExportLifecycleEvent,
+    PersistedSession,
     ProfileUpdateRequest,
+    ResearchRequest,
+    ResearchResponse,
     SessionResponse,
+    SignupRequest,
+    SignupResponse,
     UserProfile,
-    authenticate,
-    create_token,
-    get_user_profile,
-    logout_token,
-    read_users,
-    register_session,
-    save_user,
-    upsert_user_profile,
 )
+from services.auth_service import authenticate, create_token, get_user_profile, logout_token, read_users, register_session, save_user, upsert_user_profile
 from services.graph import graph
 from services.research_service import STEP_LOGS, normalize_agent_state, normalize_export_event, normalize_persisted_session
 from services.storage_service import EXPORT_EVENTS_FILE, RESEARCH_SESSIONS_FILE, current_timestamp, read_json_store, write_json_store
-
-
-class ResearchResponse(BaseModel):
-    result: Dict[str, Any]
-
-
-class ResearchRequest(BaseModel):
-    query: str
-
-
-class SignupRequest(BaseModel):
-    username: str
-    password: str
-    email: Optional[str] = None
-    display_name: Optional[str] = None
-
-
-class SignupResponse(BaseModel):
-    message: str
-
-
-class ExportEventRequest(BaseModel):
-    action: str
-    status: str
-    session_id: Optional[str] = None
-    source: str = "result_viewer"
-    format: str = "markdown"
-    file_name: Optional[str] = None
-    content_length: int = 0
-    error: Optional[str] = None
-
-
-class ExportLifecycleEvent(BaseModel):
-    id: str
-    username: str
-    action: str
-    status: str
-    session_id: Optional[str] = None
-    source: str
-    format: str
-    file_name: Optional[str] = None
-    content_length: int
-    error: Optional[str] = None
-    created_at: str
-
-
-class PersistedSession(BaseModel):
-    id: str
-    query: str
-    result: str
-    createdAt: str
-    agentState: Dict[str, Any]
 
 
 router = APIRouter()

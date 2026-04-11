@@ -4,40 +4,15 @@ import hmac
 import json
 import os
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
-from pydantic import BaseModel
+from schemas import AuthResponse, ProfileUpdateRequest, SessionResponse, UserProfile
 
 USERS_FILE = "users.txt"
 USER_PROFILES_FILE = "user_profiles.json"
 AUTH_SECRET = os.getenv("AUTH_SECRET", "dev-secret-change-me")
 TOKEN_TTL_SECONDS = 60 * 60 * 24
 ACTIVE_SESSIONS: Dict[str, Dict[str, Any]] = {}
-
-
-class UserProfile(BaseModel):
-    username: str
-    email: str
-    display_name: str
-    created_at: str
-
-
-class AuthResponse(BaseModel):
-    message: str
-    token: str
-    token_type: str = "bearer"
-    expires_in: int
-    user: UserProfile
-
-
-class SessionResponse(BaseModel):
-    authenticated: bool
-    username: str
-    user: UserProfile
-
-
-class ProfileUpdateRequest(BaseModel):
-    display_name: Optional[str] = None
 
 
 def b64url(data: bytes) -> str:
