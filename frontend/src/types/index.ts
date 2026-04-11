@@ -21,12 +21,6 @@ export interface Session {
   agentState: AgentState;
 }
 
-// Streaming event types from SSE
-export type StreamEvent =
-  | { type: 'log'; line: string }
-  | { type: 'complete'; agentState: AgentState }
-  | { type: 'error'; message: string };
-
 // useResearch hook return shape
 export interface UseResearchReturn {
   uiState: UIState;

@@ -29,7 +29,6 @@ vi.mock('../services/authApi', () => ({
     display_name: displayName,
     created_at: new Date().toISOString(),
   })),
-  fetchCurrentUserProfile: vi.fn(),
 }));
 
 describe('App routing guards', () => {

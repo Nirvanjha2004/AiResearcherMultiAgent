@@ -32,7 +32,6 @@ vi.mock('../services/authApi', () => ({
     display_name: displayName,
     created_at: new Date().toISOString(),
   })),
-  fetchCurrentUserProfile: vi.fn(),
 }));
 
 // Seed localStorage with a session for session-related tests

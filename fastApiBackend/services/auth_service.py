@@ -234,14 +234,11 @@ def upsert_user_profile(username: str, profile_data: Dict[str, Any]) -> Dict[str
     return normalized
 
 
-def extract_bearer_token(authorization: Optional[str], token_query: Optional[str] = None) -> str:
+def extract_bearer_token(authorization: Optional[str]) -> str:
     if authorization and authorization.lower().startswith("bearer "):
         token = authorization.split(" ", 1)[1].strip()
         if token:
             return token
-
-    if token_query:
-        return token_query
 
     raise ValueError("Missing auth token")
 
@@ -252,8 +249,8 @@ def register_session(token: str, username: str, exp: int) -> None:
     write_sessions_store(store)
 
 
-def authenticate(authorization: Optional[str], token_query: Optional[str] = None) -> str:
-    token = extract_bearer_token(authorization, token_query)
+def authenticate(authorization: Optional[str]) -> str:
+    token = extract_bearer_token(authorization)
     payload = verify_token(token)
     if payload is None:
         raise ValueError("Invalid or expired auth token")
@@ -275,8 +272,8 @@ def authenticate(authorization: Optional[str], token_query: Optional[str] = None
     return username
 
 
-def logout_token(authorization: Optional[str], token_query: Optional[str] = None) -> None:
-    auth_token = extract_bearer_token(authorization, token_query)
+def logout_token(authorization: Optional[str]) -> None:
+    auth_token = extract_bearer_token(authorization)
     sessions = read_sessions_store()
     sessions.pop(auth_token, None)
     write_sessions_store(sessions)

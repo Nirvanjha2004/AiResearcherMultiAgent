@@ -75,15 +75,6 @@ export async function signupWithBackend(email: string, password: string, display
   };
 }
 
-export async function fetchCurrentUserProfile(): Promise<AuthUser> {
-  return fetchJson<AuthUser>(API_ROUTES.profile, {
-    method: 'GET',
-    headers: {
-      ...getAuthHeaders(),
-    },
-  });
-}
-
 export async function validateBackendSession(): Promise<BackendSessionResponse> {
   return fetchJson<BackendSessionResponse>(API_ROUTES.session, {
     method: 'GET',
