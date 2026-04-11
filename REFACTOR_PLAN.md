@@ -86,12 +86,15 @@ Status update:
 - Session registry replaced in-memory dict with file-backed persistence (`active_sessions.json`) using atomic writes.
 - Frontend research API now uses fetch-based SSE parsing with auth headers instead of EventSource query tokens.
 - Added test ID support to chat components (Dashboard, ChatLayout, Sidebar) for better test coverage.
+- Structured logging added: `logging_service.py` provides auth, session, research, and error event logging with JSON payloads.
+- Route handlers instrumented with logging calls for signup, login, logout, session validation, profile updates, research start/complete, and export events.
+- Request/response middleware added: `middleware.py` logs HTTP method, path, status, duration, client host, and request ID.
 
 Remaining work (Phase 5 & 6):
-- Add structured logging around backend failures for observability.
+- Add request ID propagation across async operations for better tracing.
 - Consider database migration for production-grade persistence (currently file-backed).
 - Further tighten tests around the active chat-first user journey.
-- Consider request ID tracking for debugging/correlation across the distributed flow.
+- Performance tuning and caching for frequently accessed data (profiles, sessions).
 
 ### Phase 6: Remove dead code and stale tests
 - Delete or consolidate legacy components that are no longer part of the runtime flow.
