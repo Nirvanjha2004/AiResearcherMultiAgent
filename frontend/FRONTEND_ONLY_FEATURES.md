@@ -34,9 +34,11 @@ This document lists UI features that exist in the frontend but are not currently
 - Frontend now syncs dashboard sessions with backend persistence and keeps `localStorage` as a cache fallback when sync is unavailable.
 
 ## 6) File export/copy lifecycle tracking
-- Frontend capability: copy-to-clipboard confirmation and markdown download actions.
-- Backend reality: no backend endpoint for report file generation, export history, or audit trail.
-- Current frontend behavior: entirely browser-side actions.
+- Status: implemented.
+- Backend now provides authenticated export lifecycle audit endpoints:
+	- `POST /users/export_events` to record copy/download success or failure.
+	- `GET /users/export_events` to retrieve per-user export/copy history.
+- Frontend now records copy/download lifecycle events from action controls and chat message copy actions, while preserving existing browser-side copy/download UX.
 
 ## 7) User profile model beyond username/password
 - Frontend capability: UI works with `email` and profile display patterns.

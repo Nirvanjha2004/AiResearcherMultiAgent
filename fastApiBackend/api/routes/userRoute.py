@@ -41,6 +41,31 @@ class SessionResponse(BaseModel):
     username: str
 
 
+class ExportEventRequest(BaseModel):
+    action: str
+    status: str
+    session_id: Optional[str] = None
+    source: str = "result_viewer"
+    format: str = "markdown"
+    file_name: Optional[str] = None
+    content_length: int = 0
+    error: Optional[str] = None
+
+
+class ExportLifecycleEvent(BaseModel):
+    id: str
+    username: str
+    action: str
+    status: str
+    session_id: Optional[str] = None
+    source: str
+    format: str
+    file_name: Optional[str] = None
+    content_length: int
+    error: Optional[str] = None
+    created_at: str
+
+
 class PersistedSession(BaseModel):
     id: str
     query: str
@@ -80,6 +105,7 @@ STEP_LOGS = {
 
 USERS_FILE = "users.txt"
 RESEARCH_SESSIONS_FILE = "research_sessions.json"
+EXPORT_EVENTS_FILE = "export_events.json"
 AUTH_SECRET = os.getenv("AUTH_SECRET", "dev-secret-change-me")
 TOKEN_TTL_SECONDS = 60 * 60 * 24
 ACTIVE_SESSIONS: Dict[str, Dict[str, Any]] = {}
@@ -174,6 +200,26 @@ def _write_sessions_store(store: Dict[str, List[Dict[str, Any]]]) -> None:
         json.dump(store, f)
 
 
+def _read_export_events_store() -> Dict[str, List[Dict[str, Any]]]:
+    if not os.path.exists(EXPORT_EVENTS_FILE):
+        return {}
+
+    try:
+        with open(EXPORT_EVENTS_FILE, "r") as f:
+            data = json.load(f)
+            if isinstance(data, dict):
+                return data
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+    return {}
+
+
+def _write_export_events_store(store: Dict[str, List[Dict[str, Any]]]) -> None:
+    with open(EXPORT_EVENTS_FILE, "w") as f:
+        json.dump(store, f)
+
+
 def _extract_bearer_token(authorization: Optional[str], token_query: Optional[str] = None) -> str:
     if authorization and authorization.lower().startswith("bearer "):
         token = authorization.split(" ", 1)[1].strip()
@@ -248,6 +294,30 @@ def _normalize_agent_state(query: str, payload: Any) -> Dict[str, Any]:
     }
 
     return AgentStateResponse(**normalized).model_dump()
+
+
+def _normalize_export_event(username: str, payload: Any) -> Dict[str, Any]:
+    source = payload if isinstance(payload, dict) else {}
+
+    action = source.get("action") if isinstance(source.get("action"), str) else "unknown"
+    status = source.get("status") if isinstance(source.get("status"), str) else "unknown"
+    created_at = source.get("created_at") if isinstance(source.get("created_at"), str) else time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+    normalized = ExportLifecycleEvent(
+        id=source.get("id") if isinstance(source.get("id"), str) else f"evt-{int(time.time() * 1000)}",
+        username=username,
+        action=action,
+        status=status,
+        session_id=source.get("session_id") if isinstance(source.get("session_id"), str) else None,
+        source=source.get("source") if isinstance(source.get("source"), str) else "result_viewer",
+        format=source.get("format") if isinstance(source.get("format"), str) else "markdown",
+        file_name=source.get("file_name") if isinstance(source.get("file_name"), str) else None,
+        content_length=source.get("content_length") if isinstance(source.get("content_length"), int) else 0,
+        error=source.get("error") if isinstance(source.get("error"), str) else None,
+        created_at=created_at,
+    )
+
+    return normalized.model_dump()
 
 
 router = APIRouter()
@@ -410,5 +480,32 @@ def save_research_session(
 
     store[username] = user_sessions
     _write_sessions_store(store)
+
+    return normalized
+
+
+@router.get("/export_events", response_model=List[ExportLifecycleEvent])
+def list_export_events(
+    authorization: Optional[str] = Header(default=None),
+):
+    username = _authenticate(authorization)
+    store = _read_export_events_store()
+    events = store.get(username, [])
+    return [_normalize_export_event(username, event) for event in events]
+
+
+@router.post("/export_events", response_model=ExportLifecycleEvent)
+def create_export_event(
+    event: ExportEventRequest,
+    authorization: Optional[str] = Header(default=None),
+):
+    username = _authenticate(authorization)
+    store = _read_export_events_store()
+    user_events = store.get(username, [])
+
+    normalized = _normalize_export_event(username, event.model_dump())
+    user_events.insert(0, normalized)
+    store[username] = user_events[:500]
+    _write_export_events_store(store)
 
     return normalized

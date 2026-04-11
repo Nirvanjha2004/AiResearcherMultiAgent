@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Check, Copy } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
+import { trackExportEvent } from '../../services/exportTrackingApi';
 import { cn } from '../../lib/utils';
 
 interface MessageBubbleProps {
@@ -30,9 +31,28 @@ export function MessageBubble({ role, content, createdAt }: MessageBubbleProps) 
   };
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(content);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1600);
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1400);
+
+      void trackExportEvent({
+        action: 'copy',
+        status: 'success',
+        source: 'chat_message_bubble',
+        format: 'markdown',
+        content_length: content.length,
+      });
+    } catch (error) {
+      void trackExportEvent({
+        action: 'copy',
+        status: 'failed',
+        source: 'chat_message_bubble',
+        format: 'markdown',
+        content_length: content.length,
+        error: error instanceof Error ? error.message : 'Copy failed',
+      });
+    }
   };
 
   return (

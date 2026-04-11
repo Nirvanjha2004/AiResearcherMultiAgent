@@ -2,29 +2,76 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Copy, Download, Plus, Check } from 'lucide-react';
 import { fadeUpVariant, actionButtonHover } from '../lib/animations';
+import { trackExportEvent } from '../services/exportTrackingApi';
 
 interface FloatingActionBarProps {
   markdown: string;
   onNewResearch: () => void;
+  sessionId?: string | null;
 }
 
-export function FloatingActionBar({ markdown, onNewResearch }: FloatingActionBarProps) {
+export function FloatingActionBar({ markdown, onNewResearch, sessionId }: FloatingActionBarProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(markdown);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(markdown);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+
+      void trackExportEvent({
+        action: 'copy',
+        status: 'success',
+        session_id: sessionId ?? undefined,
+        source: 'floating_action_bar',
+        format: 'markdown',
+        content_length: markdown.length,
+      });
+    } catch (error) {
+      void trackExportEvent({
+        action: 'copy',
+        status: 'failed',
+        session_id: sessionId ?? undefined,
+        source: 'floating_action_bar',
+        format: 'markdown',
+        content_length: markdown.length,
+        error: error instanceof Error ? error.message : 'Copy failed',
+      });
+    }
   };
 
   const handleDownload = () => {
-    const blob = new Blob([markdown], { type: 'text/markdown' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'research.md';
-    a.click();
-    URL.revokeObjectURL(url);
+    try {
+      const fileName = 'research.md';
+      const blob = new Blob([markdown], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      void trackExportEvent({
+        action: 'download',
+        status: 'success',
+        session_id: sessionId ?? undefined,
+        source: 'floating_action_bar',
+        format: 'markdown',
+        file_name: fileName,
+        content_length: markdown.length,
+      });
+    } catch (error) {
+      void trackExportEvent({
+        action: 'download',
+        status: 'failed',
+        session_id: sessionId ?? undefined,
+        source: 'floating_action_bar',
+        format: 'markdown',
+        file_name: 'research.md',
+        content_length: markdown.length,
+        error: error instanceof Error ? error.message : 'Download failed',
+      });
+    }
   };
 
   return (

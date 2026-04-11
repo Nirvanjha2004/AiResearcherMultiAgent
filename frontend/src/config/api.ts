@@ -4,6 +4,7 @@ export const API_ROUTES = {
 	login: '/users/login',
 	signup: '/users/signup',
 	sessions: '/users/research_sessions',
+	exportEvents: '/users/export_events',
 	runResearch: '/users/run_research_agent',
 	runResearchStream: '/users/run_research_agent/stream',
 } as const;

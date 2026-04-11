@@ -4,7 +4,7 @@ import { scaleInVariant, staggerContainer, fadeUpVariant } from '../lib/animatio
 import { ResultViewerProps } from '../types';
 import { FloatingActionBar } from './FloatingActionBar';
 
-export function ResultViewer({ markdown, onNewResearch }: ResultViewerProps) {
+export function ResultViewer({ markdown, onNewResearch, sessionId }: ResultViewerProps) {
   return (
     <motion.div
       variants={scaleInVariant}
@@ -91,7 +91,7 @@ export function ResultViewer({ markdown, onNewResearch }: ResultViewerProps) {
         </ReactMarkdown>
       </motion.div>
 
-      <FloatingActionBar markdown={markdown} onNewResearch={onNewResearch} />
+      <FloatingActionBar markdown={markdown} onNewResearch={onNewResearch} sessionId={sessionId} />
     </motion.div>
   );
 }

@@ -47,6 +47,7 @@ export interface LogPanelProps {
 export interface ResultViewerProps {
   markdown: string;
   onNewResearch: () => void;
+  sessionId?: string | null;
 }
 
 export interface ErrorPanelProps {
