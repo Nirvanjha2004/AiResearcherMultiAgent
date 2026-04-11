@@ -14,15 +14,45 @@
 - Several components and tests still target legacy UI paths.
 - There is repeated request/auth plumbing across frontend services.
 
+## Backend / Frontend Wiring Audit
+
+### Fully Wired End-to-End
+- Auth flow is connected across the stack: `AuthPage` uses `authApi.ts`, and `AuthContext` re-syncs the signed-in user from the backend profile endpoint after login.
+- Research flow is connected end-to-end through the streaming path: `useResearch` -> `researchApi.ts` -> `GET /users/run_research_agent/stream`.
+- Session persistence is connected end-to-end: `useSessions` -> `sessionsApi.ts` -> `GET /users/research_sessions` and `POST /users/research_sessions`.
+- Export tracking is connected from the UI: `MessageBubble` calls `trackExportEvent()` for copy success and failure events, which targets `POST /users/export_events`.
+
+### Backend Routes That Are Not Currently Used by the Frontend
+- `GET /users/session` exists in `userRoute.py`, but there is no frontend caller.
+- `PATCH /users/profile` exists in `userRoute.py`, but there is no profile-edit UI or API caller yet.
+- `POST /users/run_research_agent` exists, but the frontend only uses the streaming research endpoint.
+- `GET /users/export_events` exists, but the frontend does not currently render an export history or audit viewer.
+
+### Wiring Quality Summary
+- The core product loop is connected: auth, streaming research, session persistence, and export auditing all have active call paths.
+- The main gaps are product gaps, not transport gaps: there is no UI for profile editing, no session validation bootstrap, and no export-history screen.
+- The remaining backend work is mostly contract cleanup, route consolidation, and deciding whether unused endpoints should be implemented in the UI or retired.
+
 ## Highest Priority Findings
-1. Duplicate app entry logic exists in `frontend/src/App.tsx`.
-2. Legacy UI components remain present even though the chat-first flow is the active runtime path.
-3. Backend route logic is over-consolidated into one large file.
-4. Auth/session persistence is fragile because it relies on plain files and in-memory session state.
-5. Several service modules repeat the same auth header and token handling logic.
-6. Some tests validate legacy behavior instead of the current runtime flow.
+1. The frontend does not consume every backend route, so there are visible backend capabilities that the UI cannot reach yet.
+2. `GET /users/session`, `PATCH /users/profile`, `POST /users/run_research_agent`, and `GET /users/export_events` are currently unrepresented in the UI.
+3. The active product flow is healthy, but the contracts are spread across route handlers, service modules, hooks, and local storage fallbacks.
+4. Backend route logic is still concentrated in one large file, which makes feature ownership and test coverage harder to reason about.
+5. Legacy UI and test coverage still exist alongside the active chat-first flow.
+6. Some current behaviors rely on silent fallback paths, especially in auth and session sync.
 
 ## Refactor Phases
+
+### Audit Step 0: Confirm the target wiring
+- Decide whether the backend-only routes should become active frontend features or be deprecated.
+- Keep the already-wired flows as the baseline: auth, streaming research, session persistence, and export tracking.
+- Document the expected frontend caller for each backend route before changing code.
+
+### Audit Step 1: Close the missing UI/backend gaps
+- Add a profile editing flow if `PATCH /users/profile` is meant to stay supported.
+- Add a session validation/bootstrap call if `GET /users/session` should be part of app startup.
+- Add an export history or audit view if `GET /users/export_events` is a real product requirement.
+- Keep the streaming research path as the primary runtime path unless there is a concrete need for the non-streaming endpoint.
 
 ### Phase 0: Stabilize the baseline
 - Remove duplicate app entry logic in `frontend/src/App.tsx`.
@@ -62,6 +92,8 @@ Split `fastApiBackend/api/routes/userRoute.py` into separate modules:
 - Research streaming routes
 - Session persistence routes
 - Export tracking routes
+
+Document the frontend callers beside each route while splitting the modules so the team can see which endpoints are live and which are still pending UI work.
 
 Move the implementation details into dedicated backend services:
 - Token creation and verification
@@ -113,6 +145,20 @@ Remaining work (Phase 5 & 6):
 - Make fallback behavior explicit and environment-aware.
 - Add request identifiers if the backend grows further.
 
+## Wiring Decisions To Make
+- Keep or retire `GET /users/session`.
+- Keep or retire `PATCH /users/profile`.
+- Keep or retire the non-streaming research endpoint.
+- Keep or retire `GET /users/export_events` until an export history UI exists.
+- Decide whether auth/session bootstrap should remain local-storage driven or be validated by the backend on app load.
+
+## Recommended Execution Order For This Audit
+1. Confirm which backend-only routes are intended to stay.
+2. Add frontend callers for the intended routes, starting with profile and session bootstrap.
+3. Remove or deprecate routes that are not product requirements.
+4. Split the backend route file after the contract decisions are frozen.
+5. Add integration tests for the connected paths so the wiring stays stable.
+
 ## Suggested Order of Execution
 1. Fix the frontend baseline.
 2. Remove or consolidate legacy frontend UI paths.
@@ -161,4 +207,6 @@ After that, move persistence to a proper database and replace custom auth/sessio
 - Completed: removed the legacy `MainArea` and old sidebar component tree.
 - Completed: removed the remaining legacy input/log/error/result action components and their tests.
 - Completed: pruned dead shared prop interfaces that only existed for deleted components.
+- Completed: wired backend session validation into the frontend auth bootstrap flow.
+- Completed: wired backend profile updates into the sidebar profile editor.
 - Next: tighten the test suite around the active chat-first flow and add coverage for the refactored backend service boundaries.

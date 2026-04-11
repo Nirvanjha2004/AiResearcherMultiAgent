@@ -6,6 +6,27 @@ vi.mock('../services/researchApi', () => ({
   streamResearch: vi.fn(() => () => {}),
 }));
 
+vi.mock('../services/authApi', () => ({
+  validateBackendSession: vi.fn(async () => ({
+    authenticated: true,
+    username: 'test@example.com',
+    user: {
+      username: 'test@example.com',
+      email: 'test@example.com',
+      display_name: 'Test User',
+      created_at: new Date().toISOString(),
+    },
+  })),
+  logoutFromBackend: vi.fn(async () => undefined),
+  updateUserProfile: vi.fn(async (displayName: string) => ({
+    username: 'test@example.com',
+    email: 'test@example.com',
+    display_name: displayName,
+    created_at: new Date().toISOString(),
+  })),
+  fetchCurrentUserProfile: vi.fn(),
+}));
+
 describe('App routing guards', () => {
   beforeEach(() => {
     localStorage.clear();

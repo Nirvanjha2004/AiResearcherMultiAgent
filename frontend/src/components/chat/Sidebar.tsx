@@ -1,9 +1,10 @@
 import { motion } from 'framer-motion';
-import { ChangeEvent } from 'react';
+import { ChangeEvent, FormEvent, useEffect, useState } from 'react';
 import { Command, Plus } from 'lucide-react';
 import { Session } from '../../types';
 import { HoverBorderGradient } from '../ui/hover-border-gradient';
 import { cn } from '../../lib/utils';
+import { useAuth } from '../../context/AuthContext';
 
 interface SidebarProps {
   sessions: Session[];
@@ -14,6 +15,7 @@ interface SidebarProps {
   onNewChat: () => void;
   onOpenPalette: () => void;
   userEmail: string;
+  userDisplayName: string;
   onLogout: () => void;
   testId?: string;
 }
@@ -31,12 +33,50 @@ export function Sidebar({
   onNewChat,
   onOpenPalette,
   userEmail,
+  userDisplayName,
   onLogout,
   testId = 'sidebar',
 }: SidebarProps) {
+  const { updateProfile } = useAuth();
+  const [displayName, setDisplayName] = useState(userDisplayName);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profileMessage, setProfileMessage] = useState<string | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setDisplayName(userDisplayName);
+  }, [userDisplayName]);
+
   const filteredSessions = sessions.filter((session) =>
     session.query.toLowerCase().includes(searchValue.toLowerCase()),
   );
+
+  const handleProfileSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const nextDisplayName = displayName.trim();
+    if (!nextDisplayName) {
+      setProfileError('Display name is required.');
+      setProfileMessage(null);
+      return;
+    }
+
+    setIsSavingProfile(true);
+    setProfileError(null);
+    setProfileMessage(null);
+
+    try {
+      await updateProfile(nextDisplayName);
+      setProfileMessage('Profile updated.');
+    } catch (error) {
+      setProfileError(error instanceof Error ? error.message : 'Could not update profile.');
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  const initialsSource = userDisplayName || userEmail;
+  const initials = initialsSource.slice(0, 1).toUpperCase();
 
   return (
     <aside
@@ -102,13 +142,38 @@ export function Sidebar({
       <div className="mt-3 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-3">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-cyan-500 text-xs font-semibold text-white">
-            {userEmail.slice(0, 1).toUpperCase()}
+            {initials}
           </div>
           <div className="min-w-0">
+            <p className="truncate text-sm font-medium text-zinc-100">
+              {userDisplayName}
+            </p>
             <p className="truncate text-sm text-zinc-100">{userEmail}</p>
             <p className="text-[11px] text-zinc-500">Pro Workspace</p>
           </div>
         </div>
+
+        <form className="mt-3 space-y-2" onSubmit={handleProfileSubmit}>
+          <label className="block text-[11px] uppercase tracking-wide text-zinc-500" htmlFor="display-name-input">
+            Display name
+          </label>
+          <input
+            id="display-name-input"
+            value={displayName}
+            onChange={(event: ChangeEvent<HTMLInputElement>) => setDisplayName(event.target.value)}
+            placeholder="Update your profile name"
+            className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-cyan-500/60 focus:outline-none"
+          />
+          {profileError && <p className="text-xs text-red-400">{profileError}</p>}
+          {profileMessage && <p className="text-xs text-emerald-400">{profileMessage}</p>}
+          <button
+            type="submit"
+            disabled={isSavingProfile}
+            className="w-full rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-xs font-medium text-cyan-200 transition hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isSavingProfile ? 'Saving...' : 'Save profile'}
+          </button>
+        </form>
 
         <button
           type="button"

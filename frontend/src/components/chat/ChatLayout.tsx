@@ -21,6 +21,7 @@ interface ChatLayoutProps {
   onNewChat: () => void;
   onSendMessage: (query: string) => void;
   userEmail: string;
+  userDisplayName: string;
   onLogout: () => void;
   testIdMainArea?: string;
   testIdSidebar?: string;
@@ -71,6 +72,7 @@ export function ChatLayout({
   onNewChat,
   onSendMessage,
   userEmail,
+  userDisplayName,
   onLogout,
   testIdMainArea,
   testIdSidebar,
@@ -121,6 +123,7 @@ export function ChatLayout({
           onNewChat={onNewChat}
           onOpenPalette={() => setPaletteOpen(true)}
           userEmail={userEmail}
+          userDisplayName={userDisplayName}
           onLogout={onLogout}
           testId={testIdSidebar}
         />

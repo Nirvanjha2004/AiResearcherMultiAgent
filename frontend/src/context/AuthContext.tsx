@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { fetchCurrentUserProfile, logoutFromBackend } from '../services/authApi';
+import { logoutFromBackend, updateUserProfile, validateBackendSession } from '../services/authApi';
 
 interface User {
   email: string;
@@ -11,6 +11,7 @@ interface AuthContextValue {
   token: string | null;
   login: (user: User, token: string) => void;
   logout: () => void;
+  updateProfile: (displayName: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -33,12 +34,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     void (async () => {
       try {
-        const profile = await fetchCurrentUserProfile();
+        const session = await validateBackendSession();
         if (!mounted) return;
 
         const syncedUser: User = {
-          email: profile.email,
-          name: profile.display_name,
+          email: session.user.email,
+          name: session.user.display_name,
         };
 
         setUser(syncedUser);
@@ -75,8 +76,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('auth_token');
   };
 
+  const updateProfile = async (displayName: string) => {
+    const profile = await updateUserProfile(displayName);
+    const syncedUser: User = {
+      email: profile.email,
+      name: profile.display_name,
+    };
+
+    setUser(syncedUser);
+    localStorage.setItem('auth_user', JSON.stringify(syncedUser));
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, login, logout }}>
+    <AuthContext.Provider value={{ user, token, login, logout, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );

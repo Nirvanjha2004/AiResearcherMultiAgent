@@ -69,6 +69,7 @@ export function Dashboard() {
       onNewChat={handleNewChat}
       onSendMessage={startResearch}
       userEmail={user?.email ?? 'guest@example.com'}
+      userDisplayName={user?.name ?? user?.email ?? 'Workspace User'}
       onLogout={logout}
       testIdMainArea="main-area"
       testIdSidebar="sidebar"

@@ -17,6 +17,12 @@ interface BackendAuthResponse {
   user?: AuthUser;
 }
 
+interface BackendSessionResponse {
+  authenticated: boolean;
+  username: string;
+  user: AuthUser;
+}
+
 interface PostAuthOptions {
   displayName?: string;
 }
@@ -75,6 +81,26 @@ export async function fetchCurrentUserProfile(): Promise<AuthUser> {
     headers: {
       ...getAuthHeaders(),
     },
+  });
+}
+
+export async function validateBackendSession(): Promise<BackendSessionResponse> {
+  return fetchJson<BackendSessionResponse>(API_ROUTES.session, {
+    method: 'GET',
+    headers: {
+      ...getAuthHeaders(),
+    },
+  });
+}
+
+export async function updateUserProfile(displayName: string): Promise<AuthUser> {
+  return fetchJson<AuthUser>(API_ROUTES.profile, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ display_name: displayName }),
   });
 }
 
